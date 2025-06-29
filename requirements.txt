@@ -1,3 +1,7 @@
 langchain-core
 langchain-google-vertexai
 google-cloud-aiplatform
+fastapi
+uvicorn
+python-dotenv
+requests
