@@ -1,2 +1,19 @@
 .env
 venv
+__pycache__/
+*.pyc
+
+# Model weights (don't push 6GB!)
+*.npz
+*.safetensors
+*.bin
+*.ckpt
+
+# big_vision (users clone separately)
+big_vision_repo/
+
+# Test artifacts
+test.jpg
+
+# Kaggle credentials
+kaggle.json

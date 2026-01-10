@@ -5,3 +5,13 @@ fastapi
 uvicorn
 python-dotenv
 requests
+jax
+flax
+sentencepiece
+tensorflow
+numpy
+Pillow
+einops
+overrides
+ml_collections
+kagglehub
