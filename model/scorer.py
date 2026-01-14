@@ -317,23 +317,71 @@ class PaliGemmaScorer:
 # DEMO
 # =============================================================================
 
+def create_test_image(text: str, path: str = "test.jpg") -> str:
+    """Create a test image with rendered text."""
+    from PIL import ImageDraw, ImageFont
+    
+    img = Image.new('RGB', (IMAGE_SIZE, IMAGE_SIZE), 'white')
+    draw = ImageDraw.Draw(img)
+    
+    # Use default font, draw text centered
+    try:
+        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 20)
+    except (OSError, IOError):
+        font = ImageFont.load_default()
+    
+    # Simple center positioning
+    draw.text((20, 100), text, fill='black', font=font)
+    img.save(path)
+    return path
+
+
 def main():
-    """Demo: score a test image against a sample query."""
+    """
+    Sanity check: verify that matching queries score higher than non-matching.
+    
+    Creates an image with "Q4 Revenue Report" text, then checks that
+    "revenue" scores higher than "weather forecast".
+    """
     print("⚙️  Initializing PaliGemma Scorer...")
     scorer = PaliGemmaScorer()
     print("✅ Model loaded!\n")
     
-    # Create a simple test image if none exists
-    test_image_path = "test.jpg"
-    if not os.path.exists(test_image_path):
-        Image.new('RGB', (224, 224), 'red').save(test_image_path)
+    # Create test image with actual text
+    test_text = "Q4 Revenue Report"
+    test_image = create_test_image(test_text)
+    print(f"📄 Test image: '{test_text}'\n")
     
-    query = "Revenue growth"
-    print(f"🔍 Query: '{query}'")
-    print(f"📄 Image: {test_image_path}")
+    # Test queries: one relevant, one irrelevant
+    queries = [
+        ("revenue report", True),      # Should match
+        ("quarterly earnings", True),  # Should match (related)
+        ("weather forecast", False),   # Should NOT match
+        ("cat pictures", False),       # Should NOT match
+    ]
     
-    score = scorer.score(test_image_path, query)
-    print(f"✅ Score: {score:.4f}")
+    print("Scoring queries:")
+    scores = []
+    for query, should_match in queries:
+        score = scorer.score(test_image, query)
+        scores.append((query, score, should_match))
+        match_icon = "✓" if should_match else "✗"
+        print(f"  [{match_icon}] '{query}': {score:.4f}")
+    
+    # Sanity check: relevant queries should score higher than irrelevant
+    relevant_scores = [s for q, s, m in scores if m]
+    irrelevant_scores = [s for q, s, m in scores if not m]
+    
+    avg_relevant = sum(relevant_scores) / len(relevant_scores)
+    avg_irrelevant = sum(irrelevant_scores) / len(irrelevant_scores)
+    
+    print(f"\n📊 Average relevant: {avg_relevant:.4f}")
+    print(f"📊 Average irrelevant: {avg_irrelevant:.4f}")
+    
+    if avg_relevant > avg_irrelevant:
+        print("✅ PASS: Relevant queries score higher than irrelevant!")
+    else:
+        print("❌ FAIL: Relevant queries should score higher than irrelevant")
 
 
 if __name__ == "__main__":
