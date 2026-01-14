@@ -30,20 +30,23 @@ The ColPali reranker uses PaliGemma-2 weights (~6GB), which are downloaded from 
    - Go to [PaliGemma-2 model page](https://www.kaggle.com/models/google/paligemma-2/)
    - Click "Request Access" and accept the terms
 
-3. **Get your API credentials:**
+3. **Get your API token:**
    - Go to [Kaggle Settings](https://www.kaggle.com/settings)
-   - Click "Create New Token" → downloads `kaggle.json`
+   - Under "API", click "Generate New Token"
+   - Copy the token value
 
 4. **Install credentials** (choose one):
    ```bash
-   # Option A: Save to ~/.kaggle/
-   mkdir -p ~/.kaggle
-   mv ~/Downloads/kaggle.json ~/.kaggle/
-   chmod 600 ~/.kaggle/kaggle.json
+   # Option A: Environment variable (recommended)
+   export KAGGLE_API_TOKEN=your_token_here
 
-   # Option B: Set environment variables
-   export KAGGLE_USERNAME=your_username
-   export KAGGLE_KEY=your_api_key
+   # Option B: Add to .env file
+   echo "KAGGLE_API_TOKEN=your_token_here" >> .env
+
+   # Option C: Save kaggle.json to ~/.kaggle/
+   mkdir -p ~/.kaggle
+   echo '{"username":"YOUR_USERNAME","key":"YOUR_TOKEN"}' > ~/.kaggle/kaggle.json
+   chmod 600 ~/.kaggle/kaggle.json
    ```
 
 ### 3. Run the Scorer
