@@ -1,0 +1,751 @@
+{
+  "n_queries": 92,
+  "n_images": 92,
+  "siglip": {
+    "correct": 70,
+    "accuracy": 0.7608695652173914
+  },
+  "clip": {
+    "correct": 43,
+    "accuracy": 0.4673913043478261
+  },
+  "improvement": 62.7906976744186,
+  "details": [
+    {
+      "query": "O'Reilly book cover titled Hands-On Large Language Models by Jay Alammar and Maarten Grootendorst with subtitle Language Understanding and Generation",
+      "target_id": "diagram_000",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "diagram showing The Transformer block with red flame logo converting input Je suis \u00e9tudiant to output I am a student",
+      "target_id": "diagram_001",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "Diagram showing Encoders connecting to Decoders to translate input \"Je suis \u00e9tudiant\" into output \"I am a student\"",
+      "target_id": "diagram_002",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "transformer diagram with 6 stacked encoders and decoders translating Je suis \u00e9tudiant input into I am a student output",
+      "target_id": "diagram_003",
+      "siglip_rank": 2,
+      "siglip_hit": false,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "Diagram of a simplified transformer encoder block containing self-attention feeding into a feed forward neural network.",
+      "target_id": "diagram_004",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "diagram showing encoder connecting to the encoder-decoder attention layer between decoder self-attention and feed forward layers",
+      "target_id": "diagram_005",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "diagram showing input embedding vectors x1, x2, and x3 for the French words Je, suis, and \u00e9tudiant",
+      "target_id": "diagram_006",
+      "siglip_rank": 2,
+      "siglip_hit": false,
+      "clip_rank": 8,
+      "clip_hit": false
+    },
+    {
+      "query": "Encoder diagram mapping Je suis \u00e9tudiant inputs x1 x2 x3 to z1 z2 z3 vectors via self-attention and feed forward layers",
+      "target_id": "diagram_007",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "Transformer encoder diagram showing inputs Thinking and Machines labeled x1 x2 passing through self-attention to z1 z2 and feed forward layers to r1 r2",
+      "target_id": "diagram_008",
+      "siglip_rank": 2,
+      "siglip_hit": false,
+      "clip_rank": 10,
+      "clip_hit": false
+    },
+    {
+      "query": "Visualization showing Layer 5 Input-Input attention weights connecting 'The_' and 'animal_' to the token 'it_' in a sentence",
+      "target_id": "diagram_009",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "diagram showing Thinking Machines embeddings X1 X2 generating q k v vectors using weight matrices WQ WK WV",
+      "target_id": "diagram_010",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 3,
+      "clip_hit": false
+    },
+    {
+      "query": "Self-attention diagram showing inputs Thinking and Machines calculating score q1 dot k1 equals 112",
+      "target_id": "diagram_011",
+      "siglip_rank": 3,
+      "siglip_hit": false,
+      "clip_rank": 4,
+      "clip_hit": false
+    },
+    {
+      "query": "self-attention calculation for Thinking and Machines showing scores 112 and 96 divided by 8 before softmax",
+      "target_id": "diagram_012",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 3,
+      "clip_hit": false
+    },
+    {
+      "query": "Self-attention calculation for words Thinking and Machines showing q1 dot k1 equals 112 divided by 8 yielding softmax 0.88",
+      "target_id": "diagram_013",
+      "siglip_rank": 2,
+      "siglip_hit": false,
+      "clip_rank": 3,
+      "clip_hit": false
+    },
+    {
+      "query": "diagram showing input matrix X multiplied by weights WQ, WK, and WV to calculate Q, K, and V matrices",
+      "target_id": "diagram_014",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "diagram visualizing scaled dot-product attention equation with softmax of Q times K transpose over square root d_k multiplied by V yielding Z",
+      "target_id": "diagram_015",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "diagram showing Thinking Machines input X and weight matrices generating Q K V for Attention Head #0 and #1",
+      "target_id": "diagram_016",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "input X containing Thinking Machines calculating attention separately in eight heads producing output matrices Z0 through Z7",
+      "target_id": "diagram_017",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "diagram showing concatenated attention heads Z0 through Z7 multiplied by weight matrix WO to produce Z matrix for FFNN",
+      "target_id": "diagram_018",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "Diagram showing input Thinking Machines X producing 8 heads of Q K V matrices and concatenated Z output",
+      "target_id": "diagram_019",
+      "siglip_rank": 6,
+      "siglip_hit": false,
+      "clip_rank": 8,
+      "clip_hit": false
+    },
+    {
+      "query": "Layer 5 Input-Input attention visualization showing \"it_\" attending to \"animal_\" and \"tire\" to resolve coreference in transformers",
+      "target_id": "diagram_020",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "Layer 5 Input-Input attention visualization showing weights connecting The animal to the highlighted token it_",
+      "target_id": "diagram_021",
+      "siglip_rank": 3,
+      "siglip_hit": false,
+      "clip_rank": 3,
+      "clip_hit": false
+    },
+    {
+      "query": "Diagram illustrating positional encoding adding t1 t2 t3 to embeddings for input \"Je suis \u00e9tudiant\" before entering ENCODER #0",
+      "target_id": "diagram_022",
+      "siglip_rank": 2,
+      "siglip_hit": false,
+      "clip_rank": 3,
+      "clip_hit": false
+    },
+    {
+      "query": "diagram adding positional encoding vectors to embeddings x1, x2, x3 for inputs Je, suis, \u00e9tudiant",
+      "target_id": "diagram_023",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 10,
+      "clip_hit": false
+    },
+    {
+      "query": "sinusoidal positional encoding heatmap with embedding dimensions 0 to 510 and sequence positions 0 to 19",
+      "target_id": "diagram_024",
+      "siglip_rank": 2,
+      "siglip_hit": false,
+      "clip_rank": 2,
+      "clip_hit": false
+    },
+    {
+      "query": "sinusoidal positional encoding heatmap showing frequency decreasing along depth dimension with alternating sine-cosine vertical stripes",
+      "target_id": "diagram_025",
+      "siglip_rank": 2,
+      "siglip_hit": false,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "Encoder #1 diagram with inputs x1 Thinking and x2 Machines passing through self-attention and add & normalize blocks",
+      "target_id": "diagram_026",
+      "siglip_rank": 2,
+      "siglip_hit": false,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "Encoder #1 diagram with inputs Thinking and Machines showing self-attention and LayerNorm(X + Z) residual calculation",
+      "target_id": "diagram_027",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "Transformer diagram showing inputs Thinking and Machines with Encoder #2 output connected to Decoder #1 encoder-decoder attention",
+      "target_id": "diagram_028",
+      "siglip_rank": 3,
+      "siglip_hit": false,
+      "clip_rank": 10,
+      "clip_hit": false
+    },
+    {
+      "query": "diagram showing decoder stack output transforming into logits and log_probs, using argmax to select index 5 and the word 'am'",
+      "target_id": "diagram_029",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "Output Vocabulary table mapping words 'a', 'am', 'I', 'thanks', 'student' to indices ending with <eos> token",
+      "target_id": "diagram_030",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 4,
+      "clip_hit": false
+    },
+    {
+      "query": "output vocabulary table mapping word am to index 1 and one-hot encoding vector showing 1.0 at second position",
+      "target_id": "diagram_031",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 2,
+      "clip_hit": false
+    },
+    {
+      "query": "Untrained Model Output with 0.2 probabilities versus Correct and desired output 1.0 for token thanks",
+      "target_id": "diagram_032",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 3,
+      "clip_hit": false
+    },
+    {
+      "query": "Target Model Outputs diagram showing one-hot encoded matrix for the sequence \"I am a student <eos>\" across positions #1 to #5",
+      "target_id": "diagram_033",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "trained model output heatmap showing 0.93 probability for \"I\" at position #1 and 0.98 for \"<eos>\" at position #5",
+      "target_id": "diagram_034",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 2,
+      "clip_hit": false
+    },
+    {
+      "query": "diagram showing BERT semi-supervised training to predict masked words followed by supervised spam classification",
+      "target_id": "diagram_035",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 7,
+      "clip_hit": false
+    },
+    {
+      "query": "BERT model processing \"Help Prince Mayuko\" input via feed-forward classifier and softmax to predict 85% spam",
+      "target_id": "diagram_036",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 2,
+      "clip_hit": false
+    },
+    {
+      "query": "visual comparison of BERTBASE and BERTLARGE model sizes represented by scaled yellow character illustrations",
+      "target_id": "diagram_037",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "diagram comparing BERT BASE with 12 stacked ENCODER layers versus BERT LARGE with 24 ENCODER layers",
+      "target_id": "diagram_038",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "BERT diagram showing input tokens [CLS] Help Prince Mayuko flowing to outputs numbered 1 to 512",
+      "target_id": "diagram_039",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "BERT diagram showing inputs [CLS] Help Prince Mayuko feeding into a stack of 12 encoders",
+      "target_id": "diagram_040",
+      "siglip_rank": 2,
+      "siglip_hit": false,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "BERT diagram showing 12 stacked encoder layers processing input tokens [CLS] Help Prince Mayuko ending at position 512",
+      "target_id": "diagram_041",
+      "siglip_rank": 2,
+      "siglip_hit": false,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "BERT using [CLS] vector and feed-forward neural network plus softmax classifier to predict 85% Spam for \"Help Prince Mayuko\"",
+      "target_id": "diagram_042",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "VGG-16 diagram showing mostly feature extraction layers and FC-4096 classification layers predicting 95% Egyptian cat",
+      "target_id": "diagram_043",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "horizontal embedding vector displaying specific numerical values -0.34, -0.84, 1.04, and -1.17 in a single row",
+      "target_id": "diagram_044",
+      "siglip_rank": 3,
+      "siglip_hit": false,
+      "clip_rank": 10,
+      "clip_hit": false
+    },
+    {
+      "query": "horizontal row of four light blue squares representing a word embedding vector in transformer visualization",
+      "target_id": "diagram_045",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "Elmo meme explaining contextual word embeddings for stick using the specific sentence stick to improvisation in this skit",
+      "target_id": "diagram_046",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "ELMo diagram showing \"Words to embed\" for \"Let's stick to improvisation in this skit\" flowing to vectors",
+      "target_id": "diagram_047",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "Diagram where 'Let's stick to' embeddings pass through stacked LSTM layers and FFNN + Softmax to predict 'Improvisation'",
+      "target_id": "diagram_048",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "diagram of forward and backward language models processing 'Let\u2019s stick to' through two LSTM layers for embedding step #1",
+      "target_id": "diagram_049",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 3,
+      "clip_hit": false
+    },
+    {
+      "query": "ELMo embedding diagram step 2 displaying hidden layers concatenated and multiplied by task weights s0 s1 s2",
+      "target_id": "diagram_050",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 3,
+      "clip_hit": false
+    },
+    {
+      "query": "diagram identifying OpenAI Transformer with flame icon as composed of DECODERS",
+      "target_id": "diagram_051",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 2,
+      "clip_hit": false
+    },
+    {
+      "query": "stack of 12 decoder layers processing 'Let's stick to' through FFNN + Softmax to predict 'Improvisation'",
+      "target_id": "diagram_052",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 2,
+      "clip_hit": false
+    },
+    {
+      "query": "OpenAI Transformer diagram processing input \"Help Prince Mayuko\" via FFNN + Softmax to output 85% Spam",
+      "target_id": "diagram_053",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "Diagram showing Classification, Entailment, and Similarity tasks using Start, Delim, and Extract tokens feeding into Transformer and Linear layers",
+      "target_id": "diagram_054",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "BERT diagram showing randomly masking 15% of tokens where FFNN + Softmax predicts 'Improvisation' from the masked position",
+      "target_id": "diagram_055",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "BERT diagram predicting likelihood that Sentence B belongs after Sentence A using [CLS] token output and FFNN + Softmax",
+      "target_id": "diagram_056",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "diagram comparing BERT fine-tuning architectures for MNLI Class Label prediction versus SQuAD v1.1 Start/End Span prediction",
+      "target_id": "diagram_057",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "BERT diagram showing 12 stacked ENCODER layers generating contextualized embeddings for inputs Help Prince Mayuko",
+      "target_id": "diagram_058",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 3,
+      "clip_hit": false
+    },
+    {
+      "query": "Chart comparing contextualized embedding strategies for \"Help\" showing Concat Last Four Hidden layers achieves best 96.1 F1 score",
+      "target_id": "diagram_059",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "diagram showing text prompt \"paradise cosmic beach\" entering Stable Diffusion model to generate a tropical scene",
+      "target_id": "diagram_060",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 26,
+      "clip_hit": false
+    },
+    {
+      "query": "diagram showing pirate ship text and landscape image inputs feeding into Stable Diffusion to generate composite output",
+      "target_id": "diagram_061",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 22,
+      "clip_hit": false
+    },
+    {
+      "query": "Stable Diffusion diagram showing 'paradise cosmic beach' text input feeding into Text Understander (Encoder) and Image Generator",
+      "target_id": "diagram_062",
+      "siglip_rank": 2,
+      "siglip_hit": false,
+      "clip_rank": 5,
+      "clip_hit": false
+    },
+    {
+      "query": "Stable Diffusion diagram showing text input \"paradise cosmic beach\" feeding into Text Encoder and Image Generator",
+      "target_id": "diagram_063",
+      "siglip_rank": 4,
+      "siglip_hit": false,
+      "clip_rank": 4,
+      "clip_hit": false
+    },
+    {
+      "query": "Stable Diffusion diagram showing text encoder and image generator block containing image information creator feeding into image decoder",
+      "target_id": "diagram_064",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 3,
+      "clip_hit": false
+    },
+    {
+      "query": "Stable Diffusion diagram displaying Image Information Creator block with UNet and Scheduler between CLIPText and Autoencoder decoder",
+      "target_id": "diagram_065",
+      "siglip_rank": 3,
+      "siglip_hit": false,
+      "clip_rank": 3,
+      "clip_hit": false
+    },
+    {
+      "query": "Stable Diffusion diagram showing CLIPText encoder outputting 77x768 embeddings for Image Information Creator UNet and Scheduler",
+      "target_id": "diagram_066",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "Stable Diffusion diagram showing Text Encoder (CLIPText) feeding token embeddings to Image Information Creator (UNet + Scheduler) to process random image information tensors",
+      "target_id": "diagram_067",
+      "siglip_rank": 3,
+      "siglip_hit": false,
+      "clip_rank": 2,
+      "clip_hit": false
+    },
+    {
+      "query": "Stable Diffusion diagram showing Image Information Creator processing random image information tensor through 50 UNet steps",
+      "target_id": "diagram_068",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 2,
+      "clip_hit": false
+    },
+    {
+      "query": "diffusion diagram showing UNet Steps 1 to 50 feeding an Image Decoder (Autoencoder decoder) labeled Image Information Creator",
+      "target_id": "diagram_069",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "forward diffusion diagram showing \"Noise sample 1\" and step 3 \"Pick an amount\" selecting level 1 intensity for a pyramid image",
+      "target_id": "diagram_070",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 20,
+      "clip_hit": false
+    },
+    {
+      "query": "diagram illustrating forward diffusion generating a 2nd training example using noise sample 2 and picking noise amount 2",
+      "target_id": "diagram_071",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 3,
+      "clip_hit": false
+    },
+    {
+      "query": "Diagram mapping input noise amount and noisy image to output noise sample labels for a UNet noise predictor",
+      "target_id": "diagram_072",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 6,
+      "clip_hit": false
+    },
+    {
+      "query": "UNet training step diagram showing noise amount 3 input generating Unet Prediction compared to Actual noise label",
+      "target_id": "diagram_073",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 3,
+      "clip_hit": false
+    },
+    {
+      "query": "diagram showing Trained Noise Predictor (UNet) using Noise amount: 3 and input to generate Predicted noise sample",
+      "target_id": "diagram_074",
+      "siglip_rank": 2,
+      "siglip_hit": false,
+      "clip_rank": 3,
+      "clip_hit": false
+    },
+    {
+      "query": "Reverse diffusion step 1 diagram showing trained noise predictor UNet using noise amount 3 to subtract predicted noise sample",
+      "target_id": "diagram_075",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 2,
+      "clip_hit": false
+    },
+    {
+      "query": "Reverse diffusion diagram where a noise predictor uses noise amounts 1 and 2 to subtract predicted noise samples.",
+      "target_id": "diagram_076",
+      "siglip_rank": 2,
+      "siglip_hit": false,
+      "clip_rank": 2,
+      "clip_hit": false
+    },
+    {
+      "query": "diagram showing Original image passing through Image Encoder and central grid to Image Decoder producing Generated image",
+      "target_id": "diagram_077",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "image encoder outputting compressed latent image and training samples with specific noise amounts 1, 2, and 3",
+      "target_id": "diagram_078",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 3,
+      "clip_hit": false
+    },
+    {
+      "query": "Image Information Creator using UNet Step 50 to denoise complete noise before feeding the processed information to the Image Decoder",
+      "target_id": "diagram_079",
+      "siglip_rank": 2,
+      "siglip_hit": false,
+      "clip_rank": 5,
+      "clip_hit": false
+    },
+    {
+      "query": "Latent diffusion diagram showing semantic map and text conditioning passing through tau theta to U-Net QKV blocks",
+      "target_id": "diagram_080",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "FID-10K versus CLIP Score Pareto curves for T5 encoders and DrawBench alignment and fidelity comparison bars",
+      "target_id": "diagram_081",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "Dataset figure showing IMAGE and CAPTION rows with specific samples like 'Soaring by Peter Eades' and 'Far Cry 4 concept art'",
+      "target_id": "diagram_082",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "Diagram labeled 1 Embed image and text showing CLIP Image Encoder and Text Encoder processing Image 1 and Caption 1",
+      "target_id": "diagram_083",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 2,
+      "clip_hit": false
+    },
+    {
+      "query": "CLIP diagram showing Image and Text Encoders comparing embeddings for Prediction 1 Similar vs 0 Not similar",
+      "target_id": "diagram_084",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 2,
+      "clip_hit": false
+    },
+    {
+      "query": "diagram showing CLIP step 3 update the models with dotted lines flowing from label similarity to encoders",
+      "target_id": "diagram_085",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 7,
+      "clip_hit": false
+    },
+    {
+      "query": "diagram showing Noise Predictor UNet with Text Conditioning taking noise amount 3 and prompt text information to output predicted noise sample",
+      "target_id": "diagram_086",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 2,
+      "clip_hit": false
+    },
+    {
+      "query": "Dataset diagram mapping inputs of step image and text to noise sample labels for a Noise Predictor UNet with Text Conditioning",
+      "target_id": "diagram_087",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 2,
+      "clip_hit": false
+    },
+    {
+      "query": "diagram showing noisy compressed image latents and noise amount 3 feeding into a Noise Predictor UNet to output a predicted noise sample",
+      "target_id": "diagram_088",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 3,
+      "clip_hit": false
+    },
+    {
+      "query": "\"Noise Predictor UNet diagram showing noise amount embedding feeding into ResNet blocks alongside noisy compressed image latents\"",
+      "target_id": "diagram_089",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 17,
+      "clip_hit": false
+    },
+    {
+      "query": "Noise Predictor UNet processing Noisy compressed image latents, Text information, and Noise amount 3 to output a Predicted noise sample",
+      "target_id": "diagram_090",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 1,
+      "clip_hit": true
+    },
+    {
+      "query": "Diagram of UNet noise predictor where text information feeds Attention blocks and noise amount feeds ResNet blocks",
+      "target_id": "diagram_091",
+      "siglip_rank": 1,
+      "siglip_hit": true,
+      "clip_rank": 5,
+      "clip_hit": false
+    }
+  ]
+}

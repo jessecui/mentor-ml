@@ -1,14 +1,18 @@
 """
-ColPali-style image-text scoring using PaliGemma-2.
+SigLIP-based image-text retrieval scoring using JAX/Flax.
 
-Computes MaxSim similarity between document images and text queries using
-the PaliGemma-2 vision-language model. Useful for document retrieval tasks.
+Uses contrastive embeddings for fast, accurate image-text matching.
+SigLIP (Sigmoid Language-Image Pretraining) is designed specifically
+for retrieval tasks and outperforms CLIP on standard benchmarks.
 
 Usage:
-    from model.scorer import PaliGemmaScorer
+    from model.scorer import SigLIPScorer
     
-    scorer = PaliGemmaScorer()
-    score = scorer.score("document.png", "revenue growth")
+    scorer = SigLIPScorer()
+    score = scorer.score(image_path, query)
+    
+    # Or batch scoring
+    scores = scorer.score_batch(image_paths, query)
 """
 
 import os
@@ -20,10 +24,6 @@ from pathlib import Path
 
 # =============================================================================
 # ENVIRONMENT SETUP
-#
-# Environment variables must be set BEFORE importing TensorFlow/JAX.
-# On macOS, threading settings prevent C++ mutex conflicts between libraries.
-# Set USE_GPU=true to enable CUDA (for Cloud Run deployment).
 # =============================================================================
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -58,16 +58,14 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 SCRIPT_DIR = Path(__file__).parent.resolve()
 PROJECT_ROOT = SCRIPT_DIR.parent
 REPO_DIR = PROJECT_ROOT / "big_vision_repo"
-TOKENIZER_PATH = SCRIPT_DIR / "paligemma_tokenizer.model"
+# SigLIP 2 uses Gemma tokenizer (256k vocab)
+TOKENIZER_PATH = SCRIPT_DIR / "gemma_tokenizer.model"
 
 if str(REPO_DIR) not in sys.path:
     sys.path.append(str(REPO_DIR))
 
 # =============================================================================
 # ML LIBRARY IMPORTS
-#
-# Import order matters: TensorFlow must be imported and disabled before JAX.
-# big_vision imports TensorFlow internally, so we configure it first.
 # =============================================================================
 
 import tensorflow as tf
@@ -85,25 +83,42 @@ import ml_collections
 if IS_MACOS or not USE_GPU:
     jax.config.update('jax_platform_name', 'cpu')
 
-import big_vision.models.proj.paligemma.paligemma as paligemma_model
-import big_vision.models.vit as vit_module
+import big_vision.models.proj.image_text.two_towers as two_towers
 from big_vision.utils import recover_tree, recover_dtype
 
 # =============================================================================
 # CONSTANTS
 # =============================================================================
 
-# PaliGemma-2 3B model configuration
-_MODEL_CONFIG_DICT = {
-    'llm': {'vocab_size': 257_152, 'variant': 'gemma2_2b', 'final_logits_softcap': 0.0},
-    'img': {'variant': 'So400m/14', 'pool_type': 'none', 'scan': True, 'dtype_mm': 'float16'}
-}
-MODEL_CONFIG: ml_collections.FrozenConfigDict = ml_collections.FrozenConfigDict(_MODEL_CONFIG_DICT)
+# SigLIP 2 So400m/14 at 384px - high quality, same vision backbone as PaliGemma
+# Direct download URL (no gsutil needed)
+CHECKPOINT_URL = "https://storage.googleapis.com/big_vision/siglip2/siglip2_so400m14_384.npz"
+CHECKPOINT_LOCAL = PROJECT_ROOT / "model" / "siglip2_so400m14_384.npz"
+IMAGE_SIZE = 384
+MAX_SEQ_LEN = 64  # SigLIP uses shorter sequences
 
-KAGGLE_HANDLE = "google/paligemma-2/jax/paligemma2-3b-pt-224"
-CHECKPOINT_FILENAME = "paligemma2-3b-pt-224.b16.npz"
-IMAGE_SIZE = 224
-MAX_SEQ_LEN = 128
+# Model configuration matching the checkpoint (from SigLIP2_demo.ipynb)
+VARIANT = "So400m/14"
+TXTVARIANT = "So400m"
+EMBDIM = 1152
+VOCAB_SIZE = 256_000
+
+MODEL_CONFIG = ml_collections.ConfigDict({
+    "image_model": "vit",
+    "image": {
+        "variant": VARIANT,
+        "pool_type": "map",
+        "scan": True,
+    },
+    "text_model": "proj.image_text.text_transformer",
+    "text": {
+        "variant": TXTVARIANT,
+        "vocab_size": VOCAB_SIZE,
+        "scan": True,
+    },
+    "out_dim": (None, EMBDIM),  # None means use model's default
+    "bias_init": -10.0,  # Required for SigLIP 2
+})
 
 
 # =============================================================================
@@ -112,27 +127,32 @@ MAX_SEQ_LEN = 128
 
 def tokenize(text: str, max_len: int = MAX_SEQ_LEN) -> list[int]:
     """
-    Tokenize text using SentencePiece.
+    Tokenize text using SentencePiece (Gemma tokenizer).
     
-    Runs in a subprocess to avoid C++ mutex conflicts with TensorFlow/JAX on macOS.
-    The subprocess overhead is minimal (~50ms) and ensures stability.
+    SigLIP 2 works best with lowercase text.
+    Uses BOS=no, EOS=sticky (appended at end).
     
-    Args:
-        text: Input text to tokenize
-        max_len: Maximum sequence length (padded with zeros)
-    
-    Returns:
-        List of token IDs, padded to max_len
+    Runs in subprocess to avoid C++ conflicts on macOS.
     """
     if not TOKENIZER_PATH.exists():
-        raise FileNotFoundError(f"Tokenizer not found: {TOKENIZER_PATH}")
+        raise FileNotFoundError(
+            f"Tokenizer not found: {TOKENIZER_PATH}\n"
+            "Download with: curl -L -o model/gemma_tokenizer.model "
+            "https://storage.googleapis.com/big_vision/paligemma_tokenizer.model"
+        )
+    
+    # Lowercase for best SigLIP 2 performance
+    text = text.lower()
     
     script = f'''
 import sentencepiece
 sp = sentencepiece.SentencePieceProcessor()
 sp.Load("{TOKENIZER_PATH}")
 tokens = sp.EncodeAsIds({repr(text)})
-tokens = tokens[:{max_len}] + [0] * ({max_len} - len(tokens))
+# No BOS, sticky EOS (Gemma-style for SigLIP 2)
+eos_id = 1  # EOS token
+tokens = tokens[:({max_len} - 1)] + [eos_id]
+tokens = tokens + [0] * ({max_len} - len(tokens))
 print(tokens)
 '''
     result = subprocess.run(
@@ -148,20 +168,25 @@ print(tokens)
 # CHECKPOINT LOADING
 # =============================================================================
 
+def download_checkpoint():
+    """Download SigLIP checkpoint if not present."""
+    if CHECKPOINT_LOCAL.exists():
+        return str(CHECKPOINT_LOCAL)
+    
+    print(f"Downloading SigLIP 2 checkpoint (~1.5GB)...")
+    print(f"  From: {CHECKPOINT_URL}")
+    print(f"  To: {CHECKPOINT_LOCAL}")
+    
+    import urllib.request
+    CHECKPOINT_LOCAL.parent.mkdir(parents=True, exist_ok=True)
+    urllib.request.urlretrieve(CHECKPOINT_URL, CHECKPOINT_LOCAL)
+    print(f"  ✅ Downloaded checkpoint")
+    
+    return str(CHECKPOINT_LOCAL)
+
+
 def load_params(checkpoint_path: str) -> dict:
-    """
-    Load model parameters from a PaliGemma checkpoint.
-    
-    Handles:
-    - bfloat16 dtype recovery (stored as raw bytes in .npz)
-    - ViT checkpoint format fixes (pyloop to scan conversion)
-    
-    Args:
-        checkpoint_path: Path to .npz checkpoint file
-    
-    Returns:
-        Dict with 'img' and 'llm' parameter trees
-    """
+    """Load SigLIP model parameters from checkpoint."""
     with np.load(checkpoint_path, allow_pickle=False) as npz:
         keys = list(npz.keys())
         values = [np.array(npz[k]) for k in keys]
@@ -169,112 +194,92 @@ def load_params(checkpoint_path: str) -> dict:
     checkpoint = recover_tree(keys, values)
     checkpoint = jax.tree.map(recover_dtype, checkpoint)
     
-    # Handle different checkpoint wrapper formats
-    if "params" in checkpoint:
-        params = checkpoint["params"]
-    elif "opt" in checkpoint:
-        params = checkpoint["opt"]["target"]
-    else:
-        params = checkpoint
-    
-    restored: dict = {"img": None, "llm": None}
-    
-    if "img" in params:
-        restored["img"] = vit_module.fix_old_checkpoints(params["img"])
-        # Convert ViT from pyloop to scan format if needed
-        if _MODEL_CONFIG_DICT["img"].get("scan"):
-            transformer = restored["img"].get("Transformer", {})
-            if "encoderblock" not in transformer:
-                restored["img"] = vit_module.pyloop_to_scan(restored["img"])
-    
-    if "llm" in params:
-        restored["llm"] = params["llm"]
-    
-    return restored
+    return checkpoint
 
 
 # =============================================================================
 # SCORING FUNCTION
 # =============================================================================
 
-def make_score_fn(model):
-    """
-    Create a JIT-compiled ColPali scoring function.
-    
-    ColPali uses "MaxSim" scoring: for each text token, find its maximum
-    cosine similarity across all image patches, then sum these maxes.
-    This captures fine-grained text-to-region matching.
-    """
+def make_siglip_score_fn(model):
+    """Create JIT-compiled scoring function."""
     
     @jax.jit
-    def score_colpali(params, images, text_tokens, text_mask):
-        """
-        Args:
-            params: Model parameters
-            images: [B, H, W, 3] float32, normalized to [-1, 1]
-            text_tokens: [B, SeqLen] int32 token IDs
-            text_mask: [B, SeqLen] int32 mask (1=real token, 0=padding)
-        
-        Returns:
-            [B] float32 similarity scores
-        """
-        # Embed image patches and text tokens
-        zimg, _ = model.apply({'params': params}, images, train=False, method=model.embed_image)
-        ztxt, _ = model.apply({'params': params}, text_tokens, train=False, method=model.embed_text)
-        
-        # L2 normalize for cosine similarity
-        zimg = zimg / (jnp.linalg.norm(zimg, axis=-1, keepdims=True) + 1e-8)
-        ztxt = ztxt / (jnp.linalg.norm(ztxt, axis=-1, keepdims=True) + 1e-8)
-        
-        # MaxSim: [B, TextLen, Patches] -> max over patches -> sum over text
-        sim_matrix = jnp.einsum('btd,bpd->btp', ztxt, zimg)
-        max_scores = jnp.max(sim_matrix, axis=-1)
-        return jnp.sum(max_scores * text_mask, axis=-1)
+    def encode_image(params, images):
+        """Encode images to normalized embeddings."""
+        zimg, _, out = model.apply(params, images, text=None, train=False)
+        return out["img/normalized"]
     
-    return score_colpali
+    @jax.jit
+    def encode_text(params, tokens):
+        """Encode text to normalized embeddings."""
+        _, ztxt, out = model.apply(params, image=None, text=tokens, train=False)
+        return out["txt/normalized"]
+    
+    @jax.jit
+    def score_with_params(img_emb, txt_emb, temperature, bias):
+        """
+        Compute SigLIP sigmoid probability score.
+        
+        SigLIP uses sigmoid(dot_product * temperature + bias) for scoring.
+        Temperature and bias are learned parameters stored in the checkpoint.
+        """
+        logits = jnp.sum(img_emb * txt_emb, axis=-1) * temperature + bias
+        return jax.nn.sigmoid(logits)
+    
+    return encode_image, encode_text, score_with_params
 
 
 # =============================================================================
 # SCORER CLASS
 # =============================================================================
 
-class PaliGemmaScorer:
+class SigLIPScorer:
     """
-    Document-query similarity scorer using PaliGemma-2.
+    Image-query relevance scorer using SigLIP 2 embeddings.
     
-    Uses ColPali-style MaxSim scoring to match text queries against
-    document images. Higher scores indicate better matches.
+    Uses contrastive embeddings with sigmoid scoring for fast,
+    accurate image-text matching. Much faster than PaliGemma VQA.
     
     Example:
-        scorer = PaliGemmaScorer()
-        score = scorer.score("quarterly_report.png", "revenue growth")
+        scorer = SigLIPScorer()
+        score = scorer.score("diagram.png", "transformer attention mechanism")
     """
     
     def __init__(self, checkpoint_path: str | None = None):
         """
-        Initialize the scorer. Downloads model from Kaggle if no path provided.
+        Initialize the scorer. Downloads model from GCS if needed.
         
         Args:
             checkpoint_path: Path to .npz checkpoint, or None to auto-download
         """
         if checkpoint_path is None:
-            import kagglehub
-            model_dir = kagglehub.model_download(KAGGLE_HANDLE)
-            checkpoint_path = os.path.join(model_dir, CHECKPOINT_FILENAME)
+            checkpoint_path = download_checkpoint()
         
-        self.model = paligemma_model.Model(**MODEL_CONFIG)  # type: ignore[arg-type]
-        self.score_fn = make_score_fn(self.model)
+        # Initialize model
+        self.model = two_towers.Model(**MODEL_CONFIG)  # type: ignore[arg-type]
+        self.encode_image, self.encode_text, self.score_fn = make_siglip_score_fn(self.model)
         self.params = load_params(checkpoint_path)
+        
+        # Extract learned temperature and bias from checkpoint
+        # t is stored as log(temperature), shape (1,)
+        t_param = self.params.get("t", jnp.log(jnp.array([10.0])))
+        self.temperature = float(jnp.exp(t_param).squeeze())
+        b_param = self.params.get("b", jnp.array([-10.0]))
+        self.bias = float(jnp.asarray(b_param).squeeze())
+        
+        # Cache for image embeddings
+        self._image_cache: dict[str, np.ndarray] = {}
     
     def preprocess_image(self, image: Image.Image | np.ndarray | str) -> np.ndarray:
         """
-        Preprocess image: resize to 224x224 and normalize to [-1, 1].
+        Preprocess image: resize and normalize to [-1, 1].
         
         Args:
             image: PIL Image, numpy array [H,W,3], or file path
         
         Returns:
-            [1, 224, 224, 3] float32 array
+            [1, IMAGE_SIZE, IMAGE_SIZE, 3] float32 array
         """
         if isinstance(image, str):
             image = Image.open(image)
@@ -285,32 +290,101 @@ class PaliGemmaScorer:
         image = image.astype(np.float32) / 127.5 - 1.0
         return image[None, ...]
     
-    def preprocess_text(self, text: str) -> tuple[jnp.ndarray, jnp.ndarray]:
+    def get_image_embedding(self, image: Image.Image | np.ndarray | str, use_cache: bool = True) -> np.ndarray:
         """
-        Tokenize text and create attention mask.
+        Get normalized embedding for an image.
+        
+        Args:
+            image: Image (file path, PIL Image, or numpy array)
+            use_cache: Whether to cache embeddings (by file path)
         
         Returns:
-            (tokens, mask) - both [1, 128] int32 arrays
+            [1, EmbedDim] normalized embedding
         """
-        tokens = tokenize(text, max_len=MAX_SEQ_LEN)
-        mask = [1 if t != 0 else 0 for t in tokens]
-        return jnp.array([tokens], dtype=jnp.int32), jnp.array([mask], dtype=jnp.int32)
+        cache_key = image if isinstance(image, str) else None
+        
+        if use_cache and cache_key and cache_key in self._image_cache:
+            return self._image_cache[cache_key]
+        
+        img_batch = self.preprocess_image(image)
+        embedding = self.encode_image(self.params, img_batch)
+        embedding = np.array(embedding)
+        
+        if use_cache and cache_key:
+            self._image_cache[cache_key] = embedding
+        
+        return embedding
+    
+    def get_text_embedding(self, query: str) -> np.ndarray:
+        """
+        Get normalized embedding for a text query.
+        
+        Args:
+            query: Text query
+        
+        Returns:
+            [1, EmbedDim] normalized embedding
+        """
+        tokens = tokenize(query, max_len=MAX_SEQ_LEN)
+        txt_batch = jnp.array([tokens], dtype=jnp.int32)
+        embedding = self.encode_text(self.params, txt_batch)
+        return np.array(embedding)
     
     def score(self, image: Image.Image | np.ndarray | str, query: str) -> float:
         """
-        Compute similarity between a document image and text query.
+        Compute relevance score between an image and text query.
         
         Args:
-            image: Document image (file path, PIL Image, or numpy array)
-            query: Text query to match
+            image: Image (file path, PIL Image, or numpy array)
+            query: Search query to match
         
         Returns:
-            Similarity score (higher = more relevant)
+            Sigmoid probability score in [0, 1]. Higher = more relevant.
         """
-        img_batch = self.preprocess_image(image)
-        txt_batch, mask_batch = self.preprocess_text(query)
-        scores = self.score_fn(self.params, img_batch, txt_batch, mask_batch)
-        return float(scores[0])
+        img_emb = self.get_image_embedding(image)
+        txt_emb = self.get_text_embedding(query)
+        score = self.score_fn(img_emb, txt_emb, self.temperature, self.bias)
+        return float(score[0])
+    
+    def score_batch(
+        self, 
+        image_paths: list[str], 
+        query: str, 
+        show_progress: bool = True
+    ) -> dict[str, float]:
+        """
+        Score a query against multiple images.
+        
+        Efficient: computes text embedding once, reuses for all images.
+        
+        Args:
+            image_paths: List of image file paths
+            query: Search query to match
+            show_progress: Whether to print progress
+        
+        Returns:
+            Dict mapping image_path -> relevance score
+        """
+        # Encode query once
+        txt_emb = self.get_text_embedding(query)
+        
+        scores = {}
+        for i, path in enumerate(image_paths):
+            img_emb = self.get_image_embedding(path)
+            score = self.score_fn(img_emb, txt_emb, self.temperature, self.bias)
+            scores[path] = float(score[0])
+            
+            if show_progress and (i + 1) % 10 == 0:
+                print(f"  Scored {i + 1}/{len(image_paths)} images")
+        
+        if show_progress:
+            print(f"  ✅ Scored {len(scores)} images")
+        
+        return scores
+    
+    def clear_cache(self):
+        """Clear the image embedding cache."""
+        self._image_cache.clear()
 
 
 # =============================================================================
@@ -337,51 +411,29 @@ def create_test_image(text: str, path: str = "test.jpg") -> str:
 
 
 def main():
-    """
-    Sanity check: verify that matching queries score higher than non-matching.
+    """Demo: test SigLIP scoring."""
+    print("=" * 60)
+    print("SigLIP Scorer Demo")
+    print("=" * 60)
     
-    Creates an image with "Q4 Revenue Report" text, then checks that
-    "revenue" scores higher than "weather forecast".
-    """
-    print("⚙️  Initializing PaliGemma Scorer...")
-    scorer = PaliGemmaScorer()
-    print("✅ Model loaded!\n")
+    scorer = SigLIPScorer()
+    print("✅ Model loaded")
     
-    # Create test image with actual text
-    test_text = "Q4 Revenue Report"
-    test_image = create_test_image(test_text)
-    print(f"📄 Test image: '{test_text}'\n")
-    
-    # Test queries: one relevant, one irrelevant
-    queries = [
-        ("revenue report", True),      # Should match
-        ("quarterly earnings", True),  # Should match (related)
-        ("weather forecast", False),   # Should NOT match
-        ("cat pictures", False),       # Should NOT match
-    ]
-    
-    print("Scoring queries:")
-    scores = []
-    for query, should_match in queries:
-        score = scorer.score(test_image, query)
-        scores.append((query, score, should_match))
-        match_icon = "✓" if should_match else "✗"
-        print(f"  [{match_icon}] '{query}': {score:.4f}")
-    
-    # Sanity check: relevant queries should score higher than irrelevant
-    relevant_scores = [s for q, s, m in scores if m]
-    irrelevant_scores = [s for q, s, m in scores if not m]
-    
-    avg_relevant = sum(relevant_scores) / len(relevant_scores)
-    avg_irrelevant = sum(irrelevant_scores) / len(irrelevant_scores)
-    
-    print(f"\n📊 Average relevant: {avg_relevant:.4f}")
-    print(f"📊 Average irrelevant: {avg_irrelevant:.4f}")
-    
-    if avg_relevant > avg_irrelevant:
-        print("✅ PASS: Relevant queries score higher than irrelevant!")
+    # Test with sample images if available
+    test_dir = PROJECT_ROOT / "benchmark" / "corpus" / "images" / "diagrams"
+    if test_dir.exists():
+        images = sorted(test_dir.glob("*.png"))[:3]
+        if images:
+            query = "transformer attention mechanism"
+            print(f"\nQuery: '{query}'")
+            print("-" * 40)
+            
+            for img_path in images:
+                score = scorer.score(str(img_path), query)
+                print(f"  {img_path.name}: {score:+.4f}")
     else:
-        print("❌ FAIL: Relevant queries should score higher than irrelevant")
+        print("\nNo test images found. Run with your own images:")
+        print("  scorer.score('image.png', 'your query')")
 
 
 if __name__ == "__main__":

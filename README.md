@@ -1,58 +1,133 @@
 # MentorML
-A conversational agent for learning ML Engineering skills, built with LangChain for orchestration and Google Cloud Vertex AI for the model endpoint.
 
-## Setup
+A multimodal learning companion for AI/ML concepts, featuring a JAX/Flax bi-encoder using SigLIP 2 for query-image retrieval of technical diagrams scraped from Jay Alammar's [Illustrated ML](https://jalammar.github.io/) posts.
 
-### 1. Clone and Install Dependencies
+## Quick Start
 
 ```bash
+# Clone repo with big_vision dependency
 git clone https://github.com/jessecui/mentor-ml.git
 cd mentor-ml
-
-# Clone big_vision (PaliGemma model architecture)
 git clone --quiet --branch=main --depth=1 https://github.com/google-research/big_vision big_vision_repo
 
 # Create virtual environment
 python -m venv venv
 source venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
-```
 
-### 2. Set Up Kaggle (for PaliGemma Weights)
+# Download Gemma tokenizer (used by SigLIP 2)
+curl -L -o model/gemma_tokenizer.model https://storage.googleapis.com/big_vision/paligemma_tokenizer.model
 
-The ColPali reranker uses PaliGemma-2 weights (~6GB), which are downloaded from Kaggle on first run.
-
-1. **Create a Kaggle account** at [kaggle.com](https://www.kaggle.com/)
-
-2. **Request model access:**
-   - Go to [PaliGemma-2 model page](https://www.kaggle.com/models/google/paligemma-2/)
-   - Click "Request Access" and accept the terms
-
-3. **Get your API token:**
-   - Go to [Kaggle Settings](https://www.kaggle.com/settings)
-   - Under "API", click "Generate New Token"
-   - Copy the token value
-
-4. **Install credentials** (choose one):
-   ```bash
-   # Option A: Environment variable (recommended)
-   export KAGGLE_API_TOKEN=your_token_here
-
-   # Option B: Add to .env file
-   echo "KAGGLE_API_TOKEN=your_token_here" >> .env
-
-   # Option C: Save kaggle.json to ~/.kaggle/
-   mkdir -p ~/.kaggle
-   echo '{"username":"YOUR_USERNAME","key":"YOUR_TOKEN"}' > ~/.kaggle/kaggle.json
-   chmod 600 ~/.kaggle/kaggle.json
-   ```
-
-### 3. Run the Scorer
-
-```bash
+# Test the scorer (auto-downloads SigLIP weights ~1.5GB on first run)
 python model/scorer.py
 ```
 
-The first run will download the model weights to `~/.cache/kagglehub/` (cached for future runs).
+## SigLIP Scorer
+
+The scorer uses [SigLIP 2](https://arxiv.org/abs/2502.14786) (So400m/14 @ 384px), Google's state-of-the-art contrastive vision-language model optimized for retrieval.
+
+### Usage
+
+```python
+from model.scorer import SigLIPScorer
+
+scorer = SigLIPScorer()
+
+# Score single image-query pair
+score = scorer.score("diagram.png", "transformer attention mechanism")
+
+# Batch scoring (efficient - encodes query once)
+scores = scorer.score_batch(["img1.png", "img2.png"], "self-attention layer")
+```
+
+### Model Details
+
+| Component | Specification |
+|-----------|---------------|
+| **Model** | SigLIP 2 So400m/14 |
+| **Image Size** | 384×384 |
+| **Parameters** | ~400M |
+| **Checkpoint** | ~1.5GB (auto-downloaded) |
+| **Tokenizer** | Gemma (256k vocab) |
+| **Framework** | JAX/Flax (big_vision) |
+
+The checkpoint downloads automatically from Google Cloud Storage on first run:
+```
+https://storage.googleapis.com/big_vision/siglip2/siglip2_so400m14_384.npz
+```
+
+## Benchmark
+
+Evaluate SigLIP vs CLIP on technical ML diagram retrieval using 92 diagrams from Jay Alammar's Illustrated series.
+
+### Results
+
+| Model | Top-1 Accuracy |
+|-------|----------------|
+| **SigLIP 2** | **76.1%** (70/92) |
+| CLIP ViT-L/14 | 46.7% (43/92) |
+
+**+29.3 percentage points improvement** (+62.8% relative)
+
+### Run Benchmark
+
+```bash
+# 1. Scrape diagrams from Jay Alammar's blog
+python benchmark/scripts/scrape_ai_ml_diagrams.py
+
+# 2. Generate queries (requires GEMINI_API_KEY in .env)
+python benchmark/scripts/generate_queries.py
+
+# 3. Evaluate SigLIP vs CLIP
+python benchmark/scripts/evaluate.py
+```
+
+### Diagram Sources
+
+The benchmark uses diagrams from the top 5 Illustrated posts:
+
+1. **The Illustrated Transformer**
+2. **The Illustrated BERT**
+3. **The Illustrated GPT-2**
+4. **The Illustrated Word2vec**
+5. **The Illustrated Stable Diffusion**
+
+### Directory Structure
+
+```
+benchmark/
+├── corpus/
+│   ├── images/diagrams/          # Downloaded ML diagrams
+│   └── metadata/
+│       ├── corpus.json           # Scraped metadata
+│       └── corpus_with_queries.json
+├── queries/
+│   └── benchmark_queries.json    # Query-image ground truth
+├── results/
+│   ├── siglip_evaluation_results.json
+│   └── siglip_evaluation_summary.txt
+└── scripts/
+    ├── scrape_ai_ml_diagrams.py
+    ├── generate_queries.py
+    └── evaluate.py
+
+model/
+├── scorer.py                     # SigLIP scorer
+├── gemma_tokenizer.model         # Tokenizer (~4MB)
+└── siglip2_so400m14_384.npz      # Checkpoint (~1.5GB, gitignored)
+```
+
+## Environment Variables
+
+Create a `.env` file in the project root:
+
+```bash
+# Required for query generation
+GEMINI_API_KEY=your_gemini_api_key
+```
+
+## Requirements
+
+- Python 3.10+
+- macOS or Linux (CPU or GPU)
+- ~4GB disk space (checkpoint + images)

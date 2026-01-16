@@ -1,0 +1,14 @@
+SigLIP 2 vs CLIP Benchmark Results
+========================================
+
+Queries: 92
+Images:  92
+
+SigLIP 2 Top-1 Accuracy:  76.1% (70/92)
+CLIP Top-1 Accuracy:      46.7% (43/92)
+
+Improvement: +29.3 percentage points (+62.8% relative)
+
+Models:
+  - SigLIP 2 So400m/14 @ 384px (JAX/Flax)
+  - CLIP ViT-L/14 @ 336px (HuggingFace)
