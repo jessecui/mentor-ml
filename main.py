@@ -117,10 +117,18 @@ class DiagramReference(BaseModel):
     post_url: str
 
 
+class TeachingPlanResponse(BaseModel):
+    """The agent's teaching plan (Chain-of-Thought reasoning)."""
+    topic: str
+    steps: list[str]
+    diagrams_needed: list[str]
+
+
 class ChatResponse(BaseModel):
     """Chat response with agent's message and any retrieved diagrams."""
     response: str
     diagrams: list[DiagramReference] = []
+    plan: TeachingPlanResponse | None = None  # Agent's CoT reasoning
 
 
 # --- Endpoints ---
@@ -146,6 +154,7 @@ async def chat(request: ChatRequest):
         
         # Extract the final response
         messages = result.get("messages", [])
+        
         if not messages:
             return ChatResponse(response="No response generated.", diagrams=[])
         
@@ -222,7 +231,17 @@ async def chat(request: ChatRequest):
         # Sort by score descending
         diagrams = sorted(diagrams_by_id.values(), key=lambda d: d.score, reverse=True)
         
-        return ChatResponse(response=response_text, diagrams=diagrams)
+        # Extract the teaching plan from result state
+        plan_response = None
+        plan = result.get("plan")
+        if plan:
+            plan_response = TeachingPlanResponse(
+                topic=plan.topic,
+                steps=plan.steps,
+                diagrams_needed=plan.diagrams_needed
+            )
+        
+        return ChatResponse(response=response_text, diagrams=diagrams, plan=plan_response)
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")

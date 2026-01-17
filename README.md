@@ -1,6 +1,14 @@
 # MentorML
 
-A multimodal learning companion for AI/ML concepts, featuring a JAX/Flax bi-encoder using SigLIP 2 for query-image retrieval of technical diagrams scraped from Jay Alammar's [Illustrated ML](https://jalammar.github.io/) posts.
+A multimodal AI/ML teaching assistant that retrieves and explains technical diagrams using a Plan-and-Execute agent architecture. Features SigLIP 2 for semantic image retrieval and Gemini 3 Flash for vision-augmented explanations.
+
+## Features
+
+- 🤖 **LangGraph Agent**: Plan-and-Execute architecture with CoT planning and ReAct execution
+- 🖼️ **Multimodal Vision**: Agent sees retrieved diagrams and provides contextual descriptions
+- 🔍 **SigLIP 2 Retrieval**: State-of-the-art bi-encoder (76% top-1 accuracy on ML diagrams)
+- 💬 **Conversation Memory**: Redis-backed checkpointing with 24h TTL
+- 🎨 **92 Diagrams**: Curated from Jay Alammar's [Illustrated ML](https://jalammar.github.io/) posts
 
 ## Quick Start
 
@@ -18,8 +26,50 @@ pip install -r requirements.txt
 # Download Gemma tokenizer (used by SigLIP 2)
 curl -L -o model/gemma_tokenizer.model https://storage.googleapis.com/big_vision/paligemma_tokenizer.model
 
-# Test the scorer (auto-downloads SigLIP weights ~1.5GB on first run)
-python model/scorer.py
+# Set up environment variables
+cp .env.example .env  # Then edit with your keys
+
+# Start Redis (required for conversation memory)
+brew services start redis  # or: docker run -p 6379:6379 redis
+
+# Run the server
+uvicorn main:app --reload --port 8000
+```
+
+## API Usage
+
+```bash
+# Chat with the agent
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "How do transformers work?", "thread_id": "user-123"}'
+
+# Get a diagram image
+curl http://localhost:8000/diagrams/diagram_042 --output diagram.png
+```
+
+### Response Format
+
+```json
+{
+  "response": "Transformers use self-attention to process sequences...",
+  "diagrams": [
+    {
+      "id": "diagram_042",
+      "score": 0.00045,
+      "query": "transformer self-attention mechanism",
+      "description": "Diagram showing Q, K, V matrices...",
+      "vision_description": "This diagram illustrates the scaled dot-product attention...",
+      "vision_latency_s": 2.5,
+      "post_url": "https://jalammar.github.io/illustrated-transformer/"
+    }
+  ],
+  "plan": {
+    "topic": "Transformers",
+    "steps": ["Explain self-attention", "Describe Q, K, V matrices", "..."],
+    "diagrams_needed": ["attention mechanism", "encoder-decoder"]
+  }
+}
 ```
 
 ## SigLIP Scorer
@@ -115,6 +165,10 @@ model/
 ├── scorer.py                     # SigLIP scorer
 ├── gemma_tokenizer.model         # Tokenizer (~4MB)
 └── siglip2_so400m14_384.npz      # Checkpoint (~1.5GB, gitignored)
+
+agent/
+├── graph.py                      # LangGraph agent (Plan-and-Execute)
+└── tools.py                      # Diagram retrieval tool with vision
 ```
 
 ## Environment Variables
@@ -122,12 +176,27 @@ model/
 Create a `.env` file in the project root:
 
 ```bash
-# Required for query generation
-GEMINI_API_KEY=your_gemini_api_key
+# Required
+GOOGLE_API_KEY=your_gemini_api_key
+
+# Optional
+REDIS_URL=redis://localhost:6379  # Default
+ENABLE_VISION=true                # Enable vision review (default: true)
+```
+
+## Architecture
+
+```
+User Query → Plan Node (CoT) → Execute Node (ReAct) ⇄ Tools → Response
+                                      ↓
+                              retrieve_diagram
+                                      ↓
+                              SigLIP similarity → Vision Review (Gemini 3 Flash)
 ```
 
 ## Requirements
 
 - Python 3.10+
-- macOS or Linux (CPU or GPU)
-- ~4GB disk space (checkpoint + images)
+- Redis (for conversation memory)
+- ~4GB disk space (SigLIP checkpoint + diagrams)
+- Gemini API key
