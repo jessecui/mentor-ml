@@ -1,6 +1,7 @@
 langchain-core
-langchain-google-vertexai
-google-cloud-aiplatform
+langchain-google-genai
+langgraph
+langgraph-checkpoint-redis
 fastapi
 uvicorn
 python-dotenv
