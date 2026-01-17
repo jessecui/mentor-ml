@@ -91,7 +91,7 @@ def create_retrieval_tool(scorer: "SigLIPScorer"):
             A dictionary with the top matching diagram:
             - id: Diagram identifier (e.g., "diagram_042")
             - score: Similarity score (0-1, higher is better)
-            - context: Original context from the blog post
+            - description: AI-generated description of what the diagram shows
             - post_url: URL of the source blog post
         """
         if _scorer is None or _image_embeddings is None:
@@ -118,7 +118,8 @@ def create_retrieval_tool(scorer: "SigLIPScorer"):
         return {
             "id": best_item["id"],
             "score": best_score,
-            "context": best_item.get("context", ""),
+            "query": query,  # The query used to retrieve this diagram
+            "description": best_item.get("query", ""),  # AI-generated description
             "post_url": best_item.get("post_url", ""),
             "post_title": best_item.get("post_title", ""),
         }

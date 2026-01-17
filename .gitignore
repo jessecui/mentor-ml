@@ -5,6 +5,7 @@ __pycache__/
 
 # Model weights (don't push 6GB!)
 *.npz
+!benchmark/corpus/embeddings/siglip_embeddings.npz
 *.safetensors
 *.bin
 *.ckpt

@@ -107,7 +107,8 @@ class DiagramReference(BaseModel):
     """Reference to a retrieved diagram."""
     id: str
     score: float
-    context: str
+    query: str  # The query the agent used to retrieve this diagram
+    description: str  # AI-generated description of the diagram
     post_url: str
 
 
@@ -161,28 +162,36 @@ async def chat(request: ChatRequest):
         else:
             response_text = str(last_content)
         
-        # Extract diagram references from tool calls
-        diagrams = []
+        # Find diagram IDs actually referenced in the response (e.g., [diagram: diagram_075])
+        import re
+        referenced_ids = set(re.findall(r'\[diagram:\s*(diagram_\d+)\]', response_text))
+        
+        # Extract diagram metadata from tool calls (only for referenced diagrams)
+        diagrams_by_id: dict[str, DiagramReference] = {}
         for msg in messages:
-            if hasattr(msg, "tool_calls"):
-                for tool_call in msg.tool_calls:
-                    if tool_call.get("name") == "retrieve_diagram":
-                        # Find the corresponding tool response
-                        pass
             # Check for tool messages (responses)
             if msg.type == "tool" and msg.name == "retrieve_diagram":
                 try:
                     # Tool content is the returned dict as string
                     tool_result = json.loads(msg.content) if isinstance(msg.content, str) else msg.content
                     if isinstance(tool_result, dict) and "id" in tool_result:
-                        diagrams.append(DiagramReference(
-                            id=tool_result["id"],
-                            score=tool_result.get("score", 0.0),
-                            context=tool_result.get("context", ""),
-                            post_url=tool_result.get("post_url", ""),
-                        ))
+                        diagram_id = tool_result["id"]
+                        # Only include diagrams actually referenced in the response
+                        if diagram_id in referenced_ids:
+                            # Keep highest scoring version if duplicate
+                            if diagram_id not in diagrams_by_id or tool_result.get("score", 0) > diagrams_by_id[diagram_id].score:
+                                diagrams_by_id[diagram_id] = DiagramReference(
+                                    id=diagram_id,
+                                    score=tool_result.get("score", 0.0),
+                                    query=tool_result.get("query", ""),
+                                    description=tool_result.get("description", ""),
+                                    post_url=tool_result.get("post_url", ""),
+                                )
                 except (json.JSONDecodeError, TypeError):
                     pass
+        
+        # Sort by score descending
+        diagrams = sorted(diagrams_by_id.values(), key=lambda d: d.score, reverse=True)
         
         return ChatResponse(response=response_text, diagrams=diagrams)
         
