@@ -64,8 +64,11 @@ async def lifespan(app: FastAPI):
     
     app.state.checkpointer = checkpointer
     
+    # Check if vision review is enabled (adds ~5-10s latency per diagram)
+    enable_vision = os.getenv("ENABLE_VISION", "true").lower() in ("true", "1", "yes")
+    
     print("🤖 Creating LangGraph agent...")
-    agent = create_agent(scorer, checkpointer=checkpointer)
+    agent = create_agent(scorer, checkpointer=checkpointer, enable_vision=enable_vision)
     app.state.agent = agent
     
     print("✅ MentorML ready!")
@@ -108,7 +111,9 @@ class DiagramReference(BaseModel):
     id: str
     score: float
     query: str  # The query the agent used to retrieve this diagram
-    description: str  # AI-generated description of the diagram
+    description: str  # Pre-generated description of the diagram
+    vision_description: str  # Contextual description from agent's vision review
+    vision_latency_s: float  # How long vision review took (seconds)
     post_url: str
 
 
@@ -185,6 +190,8 @@ async def chat(request: ChatRequest):
                                     score=tool_result.get("score", 0.0),
                                     query=tool_result.get("query", ""),
                                     description=tool_result.get("description", ""),
+                                    vision_description=tool_result.get("vision_description", ""),
+                                    vision_latency_s=tool_result.get("vision_latency_s", 0.0),
                                     post_url=tool_result.get("post_url", ""),
                                 )
                 except (json.JSONDecodeError, TypeError):

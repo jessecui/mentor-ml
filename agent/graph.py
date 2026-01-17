@@ -68,11 +68,16 @@ Output your plan as JSON with this structure:
 Keep plans concise (2-4 steps for simple questions, up to 6 for complex topics).
 """
 
-EXECUTOR_PROMPT = """You are MentorML, an expert AI/ML teaching assistant.
+EXECUTOR_PROMPT = """You are MentorML, an expert AI/ML teaching assistant that uses visual diagrams to enhance learning.
 
-Provide a clear, complete explanation of the topic. If a visual would help, use the 
-retrieve_diagram tool to find one. When you retrieve a diagram, reference it naturally 
-in your explanation using the format: [diagram: diagram_XXX]
+Provide a clear, complete explanation of the topic. You MUST use the retrieve_diagram tool 
+at least once to find a relevant visual - diagrams are essential for understanding AI/ML concepts.
+Visual learners depend on these diagrams, so always retrieve at least one diagram per response.
+
+IMPORTANT: Only reference diagrams you have ACTUALLY retrieved using the tool. 
+Do NOT make up or assume diagram IDs. When you successfully retrieve a diagram, 
+reference it naturally using the format: [diagram: diagram_XXX] where XXX is the 
+exact ID returned by the tool.
 
 Write your response as a standalone explanation - avoid "wrap-up" phrases like 
 "let's bring it all together" or "in conclusion" since this is a single response.
@@ -224,7 +229,11 @@ def should_use_tools(state: AgentState) -> Literal["tools", "end"]:
 
 # --- Graph Construction ---
 
-def create_agent(scorer: "SigLIPScorer", checkpointer: BaseCheckpointSaver | None = None):
+def create_agent(
+    scorer: "SigLIPScorer", 
+    checkpointer: BaseCheckpointSaver | None = None,
+    enable_vision: bool = True,
+):
     """
     Create a Plan-and-Execute LangGraph agent with CoT planning and ReAct execution.
     
@@ -234,6 +243,8 @@ def create_agent(scorer: "SigLIPScorer", checkpointer: BaseCheckpointSaver | Non
         scorer: Pre-initialized SigLIPScorer instance
         checkpointer: Optional checkpoint saver for conversation state.
                      If None, uses InMemorySaver (state lost on restart).
+        enable_vision: Whether to enable vision review for retrieved diagrams.
+                      Adds ~5-10s latency but provides contextual descriptions.
         
     Returns:
         Compiled LangGraph agent
@@ -243,7 +254,7 @@ def create_agent(scorer: "SigLIPScorer", checkpointer: BaseCheckpointSaver | Non
         checkpointer = InMemorySaver()
     
     # Create retrieval tool
-    retrieval_tool = create_retrieval_tool(scorer)
+    retrieval_tool = create_retrieval_tool(scorer, enable_vision=enable_vision)
     tools = [retrieval_tool]
     
     # Create tool node
