@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
     from agent.graph import create_agent
     from langgraph.checkpoint.redis import RedisSaver
     
-    print("📦 Loading SigLIP scorer (this may take a moment on first run)...")
+    print("📦 Loading SigLIP scorer...")
     scorer = SigLIPScorer()
     app.state.scorer = scorer
     
@@ -149,23 +149,45 @@ async def chat(request: ChatRequest):
         if not messages:
             return ChatResponse(response="No response generated.", diagrams=[])
         
-        # Get the last AI message content
-        last_content = messages[-1].content
+        # Find the last AI message with actual text content (not just tool calls)
+        response_text = ""
+        for msg in reversed(messages):
+            if msg.type != "ai":
+                continue
+            
+            # Skip if this message only has tool calls and no text
+            if getattr(msg, "tool_calls", None) and not msg.content:
+                continue
+            
+            content = msg.content
+            
+            # Handle Gemini 3's list content format
+            if isinstance(content, list):
+                text_parts = []
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        text_parts.append(part.get("text", ""))
+                    elif isinstance(part, str):
+                        text_parts.append(part)
+                extracted = "".join(text_parts)
+                if extracted.strip():
+                    response_text = extracted
+                    break
+            elif isinstance(content, str) and content.strip():
+                response_text = content
+                break
         
-        # Handle both string and list content formats (Gemini returns list)
-        if isinstance(last_content, str):
-            response_text = last_content
-        elif isinstance(last_content, list):
-            # Extract text from content parts
-            text_parts = []
-            for part in last_content:
-                if isinstance(part, dict) and part.get("type") == "text":
-                    text_parts.append(part.get("text", ""))
-                elif isinstance(part, str):
-                    text_parts.append(part)
-            response_text = "".join(text_parts)
-        else:
-            response_text = str(last_content)
+        # Fallback: try .text attribute (Gemini 3 convenience method)
+        if not response_text:
+            for msg in reversed(messages):
+                if msg.type == "ai":
+                    text_attr = getattr(msg, 'text', None)
+                    if text_attr and text_attr.strip():
+                        response_text = text_attr
+                        break
+        
+        if not response_text:
+            return ChatResponse(response="No response generated.", diagrams=[])
         
         # Find diagram IDs actually referenced in the response (e.g., [diagram: diagram_075])
         import re

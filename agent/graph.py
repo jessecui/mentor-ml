@@ -107,13 +107,15 @@ def plan_node(state: AgentState) -> dict:
     # For follow-ups in an existing conversation, skip heavy re-planning
     if state.plan is not None and len(state.messages) > 2:
         # Lightweight check: is this a follow-up or new topic?
-        llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
+        llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0, thinking_level="low")
         check = llm.invoke([
             SystemMessage(content="Is this a follow-up question about the same topic, or a new topic? Reply only: FOLLOWUP or NEW"),
             HumanMessage(content=f"Previous topic: {state.plan.topic}\nNew message: {last_human_msg}")
         ])
-        # Extract text from response content
-        check_text = check.content if isinstance(check.content, str) else str(check.content)
+        # Use .text for Gemini 3+ which returns content as list of blocks
+        check_text = getattr(check, 'text', None) or (
+            check.content if isinstance(check.content, str) else str(check.content)
+        )
         if "FOLLOWUP" in check_text.upper():
             # For follow-ups, create a minimal plan
             return {
@@ -127,7 +129,7 @@ def plan_node(state: AgentState) -> dict:
             }
     
     # Full planning for new topics
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3)
+    llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0.3, thinking_level="low")
     response = llm.invoke([
         SystemMessage(content=PLANNER_PROMPT),
         HumanMessage(content=last_human_msg)
@@ -135,8 +137,10 @@ def plan_node(state: AgentState) -> dict:
     
     # Parse the plan
     try:
-        # Extract text from response content
-        content = response.content if isinstance(response.content, str) else str(response.content)
+        # Use .text for Gemini 3+ which returns content as list of blocks
+        content = getattr(response, 'text', None) or (
+            response.content if isinstance(response.content, str) else str(response.content)
+        )
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0]
         elif "```" in content:
@@ -187,7 +191,7 @@ Use the retrieve_diagram tool if a visual would help explain a concept.
 """
         
         # Create LLM with tools bound
-        llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3)
+        llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0.3, thinking_level="low")
         llm_with_tools = llm.bind_tools(tools)
         
         # Build proper message sequence for Gemini

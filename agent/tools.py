@@ -98,11 +98,14 @@ def _vision_review_diagram(diagram_id: str, query: str) -> tuple[str, float]:
         ])
         
         # Quick vision call
-        llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.2)
+        llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0.2, thinking_level="low")
         response = llm.invoke([vision_message])
         
         latency = time.time() - start_time
-        description = response.content if isinstance(response.content, str) else str(response.content)
+        # Use .text for Gemini 3+ which returns content as list of blocks
+        description = getattr(response, 'text', None) or (
+            response.content if isinstance(response.content, str) else str(response.content)
+        )
         print(f"   👁️ Vision review for {diagram_id}: {latency:.2f}s")
         return description, latency
     except Exception as e:
