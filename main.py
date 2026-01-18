@@ -25,6 +25,7 @@ DIAGRAMS_DIR = PROJECT_ROOT / "benchmark" / "corpus" / "images" / "diagrams"
 
 # Global for Redis context manager cleanup
 _redis_cm = None
+_async_redis_cm = None
 
 
 @asynccontextmanager
@@ -35,7 +36,7 @@ async def lifespan(app: FastAPI):
     Loads SigLIP scorer, creates Redis checkpointer, and initializes agent at startup.
     This ensures the model is loaded once and reused across requests.
     """
-    global _redis_cm
+    global _redis_cm, _async_redis_cm
     
     print("🚀 Starting MentorML server...")
     
@@ -43,6 +44,7 @@ async def lifespan(app: FastAPI):
     from model.scorer import SigLIPScorer
     from agent.graph import create_agent
     from langgraph.checkpoint.redis import RedisSaver
+    from langgraph.checkpoint.redis.aio import AsyncRedisSaver
     
     print("📦 Loading SigLIP scorer...")
     scorer = SigLIPScorer()
@@ -55,6 +57,8 @@ async def lifespan(app: FastAPI):
         "default_ttl": 1440,     # 24 hours in minutes
         "refresh_on_read": True,  # Reset TTL when conversation is accessed
     }
+    
+    # Sync checkpointer for /chat endpoint
     _redis_cm = RedisSaver.from_conn_string(redis_url, ttl=ttl_config)
     checkpointer = _redis_cm.__enter__()
     
@@ -64,12 +68,24 @@ async def lifespan(app: FastAPI):
     
     app.state.checkpointer = checkpointer
     
+    # Async checkpointer for /chat/stream endpoint
+    _async_redis_cm = AsyncRedisSaver.from_conn_string(redis_url, ttl=ttl_config)
+    async_checkpointer = await _async_redis_cm.__aenter__()
+    await async_checkpointer.asetup()
+    app.state.async_checkpointer = async_checkpointer
+    
     # Check if vision review is enabled (adds ~5-10s latency per diagram)
     enable_vision = os.getenv("ENABLE_VISION", "true").lower() in ("true", "1", "yes")
+    app.state.enable_vision = enable_vision
     
-    print("🤖 Creating LangGraph agent...")
+    print("🤖 Creating LangGraph agents...")
+    # Sync agent for /chat
     agent = create_agent(scorer, checkpointer=checkpointer, enable_vision=enable_vision)
     app.state.agent = agent
+    
+    # Async agent for /chat/stream
+    async_agent = create_agent(scorer, checkpointer=async_checkpointer, enable_vision=enable_vision)
+    app.state.async_agent = async_agent
     
     print("✅ MentorML ready!")
     yield
@@ -77,6 +93,9 @@ async def lifespan(app: FastAPI):
     print("👋 Shutting down MentorML server...")
     if _redis_cm:
         _redis_cm.__exit__(None, None, None)
+    if _async_redis_cm:
+        await _async_redis_cm.__aexit__(None, None, None)
+
 
 
 app = FastAPI(
@@ -245,6 +264,113 @@ async def chat(request: ChatRequest):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
+
+
+# --- Streaming Endpoint ---
+
+@app.post("/chat/stream", summary="Stream chat with MentorML (SSE)")
+async def chat_stream(request: ChatRequest):
+    """
+    Stream a chat response using Server-Sent Events.
+    
+    Events emitted:
+    - plan: The agent's teaching plan (CoT reasoning)
+    - diagram: A retrieved diagram with metadata
+    - token: A text token from the response
+    - done: Final signal with aggregated diagrams
+    - error: Any error that occurred
+    """
+    from fastapi.responses import StreamingResponse
+    from langchain_core.messages import HumanMessage
+    
+    # Use async agent for streaming
+    agent = app.state.async_agent
+    
+    async def event_generator():
+        """Generate SSE events from agent stream."""
+        import re
+        
+        diagrams_collected: dict[str, dict] = {}
+        text_buffer = ""
+        plan_emitted = False
+        
+        try:
+            async for event in agent.astream_events(
+                {"messages": [HumanMessage(content=request.message)]},
+                config={"configurable": {"thread_id": request.thread_id}},
+                version="v2",
+            ):
+                event_type = event.get("event")
+                
+                # Plan complete - emit teaching plan
+                if event_type == "on_chain_end" and not plan_emitted:
+                    output = event.get("data", {}).get("output", {})
+                    if isinstance(output, dict) and "plan" in output:
+                        plan = output["plan"]
+                        if plan:
+                            plan_data = {
+                                "topic": plan.topic,
+                                "steps": plan.steps,
+                                "diagrams_needed": plan.diagrams_needed
+                            }
+                            yield f"event: plan\ndata: {json.dumps(plan_data)}\n\n"
+                            plan_emitted = True
+                
+                # Tool result - diagram retrieved
+                if event_type == "on_tool_end":
+                    tool_name = event.get("name", "")
+                    if tool_name == "retrieve_diagram":
+                        tool_output = event.get("data", {}).get("output")
+                        # tool_output is a ToolMessage object
+                        if tool_output and hasattr(tool_output, 'content'):
+                            try:
+                                diagram_data = json.loads(tool_output.content) if isinstance(tool_output.content, str) else tool_output.content
+                                if isinstance(diagram_data, dict) and "id" in diagram_data:
+                                    diagram_id = diagram_data["id"]
+                                    diagrams_collected[diagram_id] = diagram_data
+                                    yield f"event: diagram\ndata: {json.dumps(diagram_data)}\n\n"
+                            except (json.JSONDecodeError, TypeError) as e:
+                                print(f"❌ Diagram parse error: {e}")
+                
+                # LLM streaming tokens
+                if event_type == "on_chat_model_stream":
+                    chunk = event.get("data", {}).get("chunk")
+                    if chunk:
+                        content = chunk.content
+                        # Handle Gemini 3's list content format
+                        if isinstance(content, list):
+                            for part in content:
+                                if isinstance(part, dict) and part.get("type") == "text":
+                                    text = part.get("text", "")
+                                    if text:
+                                        text_buffer += text
+                                        yield f"event: token\ndata: {json.dumps(text)}\n\n"
+                        elif isinstance(content, str) and content:
+                            text_buffer += content
+                            yield f"event: token\ndata: {json.dumps(content)}\n\n"
+            
+            # Find referenced diagrams in final text
+            referenced_ids = set(re.findall(r'\[diagram:\s*(diagram_\d+)\]', text_buffer))
+            final_diagrams = [
+                diagrams_collected[did] for did in referenced_ids 
+                if did in diagrams_collected
+            ]
+            
+            # Done event with final state
+            yield f"event: done\ndata: {json.dumps({'diagrams': final_diagrams})}\n\n"
+            
+        except Exception as e:
+            yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        }
+    )
 
 
 @app.get("/diagrams/{diagram_id}", summary="Get a diagram image")
