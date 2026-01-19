@@ -5,9 +5,10 @@ import { GraduationCap } from "lucide-react";
 
 interface MessageListProps {
   messages: MessageType[];
+  onFillSuggestion?: (message: string) => void;
 }
 
-export function MessageList({ messages }: MessageListProps) {
+export function MessageList({ messages, onFillSuggestion }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -26,9 +27,9 @@ export function MessageList({ messages }: MessageListProps) {
           neural networks, transformers, training algorithms, and more!
         </p>
         <div className="grid gap-2 text-sm">
-          <SuggestionButton text="What is the attention mechanism?" />
-          <SuggestionButton text="Explain backpropagation step by step" />
-          <SuggestionButton text="How do transformers work?" />
+          <SuggestionButton text="What is the attention mechanism?" onFill={onFillSuggestion} />
+          <SuggestionButton text="Explain backpropagation step by step" onFill={onFillSuggestion} />
+          <SuggestionButton text="How do transformers work?" onFill={onFillSuggestion} />
         </div>
       </div>
     );
@@ -46,20 +47,12 @@ export function MessageList({ messages }: MessageListProps) {
   );
 }
 
-function SuggestionButton({ text }: { text: string }) {
+function SuggestionButton({ text, onFill }: { text: string; onFill?: (message: string) => void }) {
   return (
     <button
       type="button"
       className="rounded-lg border border-border bg-white px-4 py-2 text-left text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
-      onClick={() => {
-        // Find input and fill it
-        const input = document.querySelector("textarea");
-        if (input) {
-          input.value = text;
-          input.dispatchEvent(new Event("input", { bubbles: true }));
-          input.focus();
-        }
-      }}
+      onClick={() => onFill?.(text)}
     >
       {text}
     </button>

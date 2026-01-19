@@ -1,23 +1,24 @@
-import { useState, useRef, useEffect } from "react";
-import { Send, Square, Trash2 } from "lucide-react";
+import { useRef, useEffect } from "react";
+import { Send, Square } from "lucide-react";
 import { cn } from "../lib/utils";
 
 interface ChatInputProps {
+  input: string;
+  setInput: (value: string) => void;
   onSend: (message: string) => void;
   onStop: () => void;
-  onClear: () => void;
   isStreaming: boolean;
   disabled?: boolean;
 }
 
 export function ChatInput({
+  input,
+  setInput,
   onSend,
   onStop,
-  onClear,
   isStreaming,
   disabled,
 }: ChatInputProps) {
-  const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -44,31 +45,21 @@ export function ChatInput({
 
   return (
     <form onSubmit={handleSubmit} className="border-t border-border bg-white p-4">
-      <div className="mx-auto flex max-w-3xl items-end gap-2">
-        <button
-          type="button"
-          onClick={onClear}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          title="Clear conversation"
-        >
-          <Trash2 className="h-5 w-5" />
-        </button>
-        <div className="relative flex-1">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about ML concepts..."
-            disabled={disabled}
-            rows={1}
-            className={cn(
-              "w-full resize-none rounded-xl border border-border bg-white px-4 py-3 pr-12 text-base",
-              "placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary",
-              "disabled:cursor-not-allowed disabled:opacity-50"
-            )}
-          />
-        </div>
+      <div className="mx-auto flex max-w-3xl items-center gap-2">
+        <textarea
+          ref={textareaRef}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Ask about ML concepts..."
+          disabled={disabled}
+          rows={1}
+          className={cn(
+            "flex-1 resize-none rounded-xl border border-border bg-white px-4 py-2 text-base",
+            "placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary",
+            "disabled:cursor-not-allowed disabled:opacity-50"
+          )}
+        />
         {isStreaming ? (
           <button
             type="button"
