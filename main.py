@@ -105,6 +105,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Mount static files for diagram images
+from fastapi.staticfiles import StaticFiles
+IMAGES_DIR = PROJECT_ROOT / "benchmark" / "corpus" / "images"
+if IMAGES_DIR.exists():
+    app.mount("/benchmark/corpus/images", StaticFiles(directory=str(IMAGES_DIR)), name="images")
+
+# Serve frontend static files in production (after `npm run build`)
+FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
+if FRONTEND_DIST.exists():
+    # Serve static assets (JS, CSS, etc.)
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="frontend-assets")
+
 
 # --- Request/Response Models ---
 
@@ -293,6 +305,7 @@ async def chat_stream(request: ChatRequest):
         diagrams_collected: dict[str, dict] = {}
         text_buffer = ""
         plan_emitted = False
+        current_node = ""
         
         try:
             async for event in agent.astream_events(
@@ -301,6 +314,12 @@ async def chat_stream(request: ChatRequest):
                 version="v2",
             ):
                 event_type = event.get("event")
+                
+                # Track which node we're in
+                if event_type == "on_chain_start":
+                    node_name = event.get("name", "")
+                    if node_name in ("planner", "executor", "tools"):
+                        current_node = node_name
                 
                 # Plan complete - emit teaching plan
                 if event_type == "on_chain_end" and not plan_emitted:
@@ -334,20 +353,31 @@ async def chat_stream(request: ChatRequest):
                 
                 # LLM streaming tokens
                 if event_type == "on_chat_model_stream":
+                    # Get metadata to check which node this is from
+                    metadata = event.get("metadata", {})
+                    langgraph_node = metadata.get("langgraph_node", "")
+                    
                     chunk = event.get("data", {}).get("chunk")
                     if chunk:
                         content = chunk.content
+                        text = ""
                         # Handle Gemini 3's list content format
                         if isinstance(content, list):
                             for part in content:
                                 if isinstance(part, dict) and part.get("type") == "text":
-                                    text = part.get("text", "")
-                                    if text:
-                                        text_buffer += text
-                                        yield f"event: token\ndata: {json.dumps(text)}\n\n"
-                        elif isinstance(content, str) and content:
-                            text_buffer += content
-                            yield f"event: token\ndata: {json.dumps(content)}\n\n"
+                                    text += part.get("text", "")
+                        elif isinstance(content, str):
+                            text = content
+                        
+                        if text:
+                            if langgraph_node == "plan":
+                                # Stream planning tokens as "thinking" event
+                                yield f"event: thinking\ndata: {json.dumps(text)}\n\n"
+                            elif langgraph_node == "execute":
+                                # Stream executor tokens as main content
+                                text_buffer += text
+                                yield f"event: token\ndata: {json.dumps(text)}\n\n"
+                            # Skip 'tools' node tokens (vision descriptions)
             
             # Find referenced diagrams in final text
             referenced_ids = set(re.findall(r'\[diagram:\s*(diagram_\d+)\]', text_buffer))
@@ -395,14 +425,28 @@ async def get_diagram(diagram_id: str):
     return FileResponse(filepath, media_type="image/png")
 
 
-@app.get("/", summary="Health check")
-async def health_check():
-    """Check if the MentorML API is running."""
+@app.get("/", summary="Health check / Frontend")
+async def root():
+    """Serve frontend index.html in production, health check in dev."""
+    index_file = FRONTEND_DIST / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    # Fallback: health check for dev/API-only mode
     return {
         "status": "healthy",
         "service": "MentorML API",
         "version": "2.0.0",
     }
+
+
+# Catch-all for SPA routing (must be last)
+@app.get("/{path:path}", include_in_schema=False)
+async def spa_fallback(path: str):
+    """Serve index.html for any unmatched routes (SPA client-side routing)."""
+    index_file = FRONTEND_DIST / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    raise HTTPException(status_code=404, detail="Not found")
 
 
 # --- Local Development ---

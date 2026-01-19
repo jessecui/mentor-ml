@@ -9,6 +9,8 @@ A multimodal AI/ML teaching assistant that retrieves and explains technical diag
 - 🔍 **SigLIP 2 Retrieval**: State-of-the-art bi-encoder (76% top-1 accuracy on ML diagrams)
 - 💬 **Conversation Memory**: Redis-backed checkpointing with 24h TTL
 - 🎨 **92 Diagrams**: Curated from Jay Alammar's [Illustrated ML](https://jalammar.github.io/) posts
+- ⚡ **SSE Streaming**: Real-time token streaming with thinking/planning visibility
+- 🖥️ **React Frontend**: Chat UI with inline diagrams and collapsible teaching plans
 
 ## Quick Start
 
@@ -32,20 +34,57 @@ cp .env.example .env  # Then edit with your keys
 # Start Redis (required for conversation memory)
 brew services start redis  # or: docker run -p 6379:6379 redis
 
-# Run the server
-uvicorn main:app --reload --port 8000
+# Install frontend dependencies
+cd frontend && npm install && cd ..
 ```
+
+### Development (two servers)
+
+```bash
+# Terminal 1: Backend
+uvicorn main:app --reload --port 8080
+
+# Terminal 2: Frontend (with hot reload)
+cd frontend && npm run dev
+```
+Open **http://localhost:5173**
+
+### Production (single server)
+
+```bash
+# Build frontend
+cd frontend && npm run build && cd ..
+
+# Run server (serves API + frontend)
+uvicorn main:app --port 8080
+```
+Open **http://localhost:8080**
 
 ## API Usage
 
+### Streaming (Recommended)
+
 ```bash
-# Chat with the agent
-curl -X POST http://localhost:8000/chat \
+# Stream chat responses with SSE
+curl -N -X POST http://localhost:8080/chat/stream \
   -H "Content-Type: application/json" \
   -d '{"message": "How do transformers work?", "thread_id": "user-123"}'
+```
 
-# Get a diagram image
-curl http://localhost:8000/diagrams/diagram_042 --output diagram.png
+SSE Events:
+- `thinking` - Planning tokens (JSON teaching plan)
+- `diagram` - Retrieved diagram metadata
+- `token` - Response text tokens
+- `plan` - Parsed teaching plan object
+- `done` - Final state with referenced diagrams
+
+### Non-Streaming
+
+```bash
+# Chat with the agent (blocking)
+curl -X POST http://localhost:8080/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "How do transformers work?", "thread_id": "user-123"}'
 ```
 
 ### Response Format
@@ -194,9 +233,25 @@ User Query → Plan Node (CoT) → Execute Node (ReAct) ⇄ Tools → Response
                               SigLIP similarity → Vision Review (Gemini 3 Flash)
 ```
 
+### Frontend
+
+```
+frontend/src/
+├── components/
+│   ├── Chat.tsx         # Main container
+│   ├── ChatInput.tsx    # Input with send/stop/clear
+│   ├── DiagramCard.tsx  # Diagram display with source link
+│   ├── Message.tsx      # Message bubble + ThinkingSection
+│   └── MessageList.tsx  # Message list + empty state
+├── hooks/
+│   └── useStreamChat.ts # SSE streaming hook
+└── types.ts             # TypeScript interfaces
+```
+
 ## Requirements
 
 - Python 3.10+
+- Node.js 18+ (for frontend)
 - Redis (for conversation memory)
 - ~4GB disk space (SigLIP checkpoint + diagrams)
 - Gemini API key
