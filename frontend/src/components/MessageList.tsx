@@ -27,9 +27,9 @@ export function MessageList({ messages, onFillSuggestion }: MessageListProps) {
           neural networks, transformers, training algorithms, and more!
         </p>
         <div className="grid gap-2 text-sm">
-          <SuggestionButton text="What is the attention mechanism?" onFill={onFillSuggestion} />
-          <SuggestionButton text="Explain backpropagation step by step" onFill={onFillSuggestion} />
           <SuggestionButton text="How do transformers work?" onFill={onFillSuggestion} />
+          <SuggestionButton text="What is the attention mechanism?" onFill={onFillSuggestion} />
+          <SuggestionButton text="How do latent diffusion models work?" onFill={onFillSuggestion} />          
         </div>
       </div>
     );

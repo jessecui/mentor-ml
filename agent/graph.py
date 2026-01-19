@@ -79,6 +79,20 @@ Do NOT make up or assume diagram IDs. When you successfully retrieve a diagram,
 reference it naturally using the format: [diagram: diagram_XXX] where XXX is the 
 exact ID returned by the tool.
 
+DIAGRAM FORMATTING: Always place diagram references on their own line, with a blank line 
+before and after. Then describe what the diagram shows AFTER it. Never write "As you see in 
+[diagram: ...]" or reference diagrams inline. Instead:
+
+CORRECT:
+Here's how attention works:
+
+[diagram: diagram_042]
+
+The diagram above illustrates the scaled dot-product attention mechanism...
+
+WRONG:
+As you see in [diagram: diagram_042], it shows the attention mechanism...
+
 Write your response as a standalone explanation - avoid "wrap-up" phrases like 
 "let's bring it all together" or "in conclusion" since this is a single response.
 
