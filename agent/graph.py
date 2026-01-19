@@ -118,7 +118,7 @@ def plan_node(state: AgentState) -> dict:
         return {}
     
     # Check if this is a follow-up or new topic
-    # For follow-ups in an existing conversation, skip heavy re-planning
+    # For follow-ups in an existing conversation, do lightweight planning
     if state.plan is not None and len(state.messages) > 2:
         # Lightweight check: is this a follow-up or new topic?
         llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0, thinking_level="low")
@@ -131,10 +131,50 @@ def plan_node(state: AgentState) -> dict:
             check.content if isinstance(check.content, str) else str(check.content)
         )
         if "FOLLOWUP" in check_text.upper():
-            # For follow-ups, create a minimal plan
+            # For follow-ups, do quick planning that can include diagrams
+            followup_llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0.3, thinking_level="low")
+            followup_prompt = f"""You are planning a follow-up explanation for an AI/ML tutoring session.
+
+Previous topic: {state.plan.topic}
+Previous diagrams used: {", ".join(state.plan.diagrams_needed) if state.plan.diagrams_needed else "none"}
+Follow-up question: {last_human_msg}
+
+Create a brief teaching plan for this follow-up. Output JSON:
+{{
+    "topic": "{state.plan.topic} (follow-up)",
+    "steps": ["step 1", ...],
+    "diagrams_needed": ["concept needing diagram", ...]
+}}
+
+Keep it concise (1-2 steps). Only include diagrams_needed if a NEW diagram would genuinely help.
+You can reference previously shown diagrams without re-retrieving them."""
+
+            response = followup_llm.invoke([HumanMessage(content=followup_prompt)])
+            response_text = getattr(response, 'text', None) or (
+                response.content if isinstance(response.content, str) else str(response.content)
+            )
+            
+            try:
+                import re
+                json_match = re.search(r'\{[^{}]*\}', response_text, re.DOTALL)
+                if json_match:
+                    plan_data = json.loads(json_match.group())
+                    return {
+                        "plan": TeachingPlan(
+                            topic=plan_data.get("topic", f"{state.plan.topic} (follow-up)"),
+                            steps=plan_data.get("steps", [f"Address: {last_human_msg}"]),
+                            diagrams_needed=plan_data.get("diagrams_needed", [])
+                        ),
+                        "current_step": 0,
+                        "steps_completed": [],
+                    }
+            except (json.JSONDecodeError, KeyError):
+                pass
+            
+            # Fallback: inherit parent topic with minimal plan
             return {
                 "plan": TeachingPlan(
-                    topic=state.plan.topic,
+                    topic=f"{state.plan.topic} (follow-up)",
                     steps=[f"Address follow-up: {last_human_msg}"],
                     diagrams_needed=[]
                 ),
@@ -208,18 +248,21 @@ Use the retrieve_diagram tool if a visual would help explain a concept.
         llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0.3, thinking_level="low")
         llm_with_tools = llm.bind_tools(tools)
         
-        # Build proper message sequence for Gemini
-        user_messages = [m for m in state.messages if isinstance(m, HumanMessage)]
-        
+        # Build proper message sequence for Gemini with full conversation history
         messages_for_llm: list[BaseMessage] = [
             SystemMessage(content=EXECUTOR_PROMPT + "\n\n" + context),
         ]
         
-        # Add the user question
-        if user_messages:
-            messages_for_llm.append(user_messages[-1])
+        # Add conversation history (Human/AI pairs, skip tool messages for cleaner context)
+        for m in state.messages:
+            if isinstance(m, HumanMessage):
+                messages_for_llm.append(m)
+            elif isinstance(m, AIMessage):
+                # Only include AI messages with actual content (not just tool calls)
+                if m.content and not getattr(m, "tool_calls", None):
+                    messages_for_llm.append(m)
         
-        # Handle tool call/response pairs for ReAct loop
+        # Handle tool call/response pairs for current ReAct loop
         recent_tool_messages = [m for m in state.messages[-4:] if isinstance(m, ToolMessage)]
         if recent_tool_messages:
             for m in reversed(state.messages):
