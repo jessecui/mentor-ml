@@ -98,7 +98,7 @@ def _vision_review_diagram(diagram_id: str, query: str) -> tuple[str, float]:
         ])
         
         # Quick vision call
-        llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0.2, thinking_level="low")
+        llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=1.0, thinking_level="low")
         response = llm.invoke([vision_message])
         
         latency = time.time() - start_time

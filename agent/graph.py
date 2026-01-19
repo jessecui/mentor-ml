@@ -132,7 +132,7 @@ def plan_node(state: AgentState) -> dict:
         )
         if "FOLLOWUP" in check_text.upper():
             # For follow-ups, do quick planning that can include diagrams
-            followup_llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0.3, thinking_level="low")
+            followup_llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=1.0, thinking_level="low")
             followup_prompt = f"""You are planning a follow-up explanation for an AI/ML tutoring session.
 
 Previous topic: {state.plan.topic}
@@ -183,7 +183,7 @@ You can reference previously shown diagrams without re-retrieving them."""
             }
     
     # Full planning for new topics
-    llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0.3, thinking_level="low")
+    llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=1.0, thinking_level="low")
     response = llm.invoke([
         SystemMessage(content=PLANNER_PROMPT),
         HumanMessage(content=last_human_msg)
@@ -245,7 +245,7 @@ Use the retrieve_diagram tool if a visual would help explain a concept.
 """
         
         # Create LLM with tools bound
-        llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0.3, thinking_level="low")
+        llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=1.0, thinking_level="low")
         llm_with_tools = llm.bind_tools(tools)
         
         # Build proper message sequence for Gemini with full conversation history
