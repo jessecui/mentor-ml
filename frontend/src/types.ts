@@ -23,6 +23,7 @@ export interface Message {
   plan?: TeachingPlan;
   diagrams?: Diagram[];
   isStreaming?: boolean;
+  wasStopped?: boolean;
 }
 
 export interface StreamEvent {

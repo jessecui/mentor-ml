@@ -2,7 +2,7 @@ import ReactMarkdown from "react-markdown";
 import type { Message as MessageType, Diagram } from "../types";
 import { DiagramCard } from "./DiagramCard";
 import { cn } from "../lib/utils";
-import { User, Bot, Loader2, ChevronDown, ChevronRight, Brain } from "lucide-react";
+import { User, Bot, Loader2, ChevronDown, ChevronRight, Brain, StopCircle } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 interface MessageProps {
@@ -193,6 +193,14 @@ export function Message({ message }: MessageProps) {
               <span>{message.thinking ? "Retrieving diagrams..." : "Planning..."}</span>
             </div>
           ) : null}
+          
+          {/* Show stopped indicator */}
+          {message.wasStopped && (
+            <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+              <StopCircle className="h-4 w-4" />
+              <span>Response stopped</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

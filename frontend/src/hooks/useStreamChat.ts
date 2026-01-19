@@ -152,6 +152,14 @@ export function useStreamChat(options: UseStreamChatOptions = {}) {
       } catch (error) {
         if ((error as Error).name === "AbortError") {
           console.log("Request aborted");
+          // Mark message as stopped
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantId
+                ? { ...msg, isStreaming: false, wasStopped: true }
+                : msg
+            )
+          );
         } else {
           console.error("Stream error:", error);
           setMessages((prev) =>
