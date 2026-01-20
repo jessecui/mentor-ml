@@ -15,7 +15,7 @@ export function Chat() {
       <header className="flex items-center gap-3 border-b border-border bg-white px-4 py-3">
         <button
           onClick={clearMessages}
-          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
           title="Start new conversation"
         >
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">

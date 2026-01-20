@@ -51,7 +51,7 @@ function SuggestionButton({ text, onFill }: { text: string; onFill?: (message: s
   return (
     <button
       type="button"
-      className="rounded-lg border border-border bg-white px-4 py-2 text-left text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+      className="rounded-lg border border-border bg-white px-4 py-2 text-left text-muted-foreground transition-colors hover:border-primary hover:text-foreground cursor-pointer"
       onClick={() => onFill?.(text)}
     >
       {text}

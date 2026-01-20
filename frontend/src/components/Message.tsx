@@ -34,7 +34,7 @@ function ThinkingSection({ thinking }: { thinking: string }) {
     <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-amber-800 hover:bg-amber-100"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-amber-800 hover:bg-amber-100 cursor-pointer"
       >
         {isExpanded ? (
           <ChevronDown className="h-4 w-4" />

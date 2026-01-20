@@ -64,7 +64,7 @@ export function ChatInput({
           <button
             type="button"
             onClick={onStop}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-500 text-white transition-colors hover:bg-red-600"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-500 text-white transition-colors hover:bg-red-600 cursor-pointer"
             title="Stop generating"
           >
             <Square className="h-4 w-4 fill-current" />
@@ -76,7 +76,7 @@ export function ChatInput({
             className={cn(
               "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors",
               input.trim() && !disabled
-                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
                 : "bg-muted text-muted-foreground cursor-not-allowed"
             )}
             title="Send message"
