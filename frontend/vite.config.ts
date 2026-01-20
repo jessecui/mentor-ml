@@ -16,6 +16,7 @@ export default defineConfig({
       '/chat': 'http://localhost:8080',
       '/health': 'http://localhost:8080',
       '/benchmark': 'http://localhost:8080',
+      '/validate-password': 'http://localhost:8080',
     },
   },
 })

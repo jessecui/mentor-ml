@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Cookie, Depends
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -103,6 +103,9 @@ app = FastAPI(
     description="A multimodal AI/ML teaching assistant with diagram retrieval",
     version="2.0.0",
     lifespan=lifespan,
+    docs_url=None,      # Disable /docs
+    redoc_url=None,     # Disable /redoc  
+    openapi_url=None,   # Disable /openapi.json
 )
 
 # Mount static files for diagram images
@@ -137,6 +140,11 @@ class ChatRequest(BaseModel):
     }
 
 
+class ValidatePasswordRequest(BaseModel):
+    """Password validation request."""
+    password: str
+
+
 class DiagramReference(BaseModel):
     """Reference to a retrieved diagram."""
     id: str
@@ -162,9 +170,17 @@ class ChatResponse(BaseModel):
     plan: TeachingPlanResponse | None = None  # Agent's CoT reasoning
 
 
+# --- Auth Dependency ---
+
+async def require_auth(mentor_auth: str | None = Cookie(default=None)):
+    """Require valid auth cookie to access protected endpoints."""
+    if mentor_auth != "true":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
 # --- Endpoints ---
 
-@app.post("/chat", response_model=ChatResponse, summary="Chat with MentorML")
+@app.post("/chat", response_model=ChatResponse, summary="Chat with MentorML", dependencies=[Depends(require_auth)])
 async def chat(request: ChatRequest):
     """
     Send a message to the MentorML agent.
@@ -280,7 +296,7 @@ async def chat(request: ChatRequest):
 
 # --- Streaming Endpoint ---
 
-@app.post("/chat/stream", summary="Stream chat with MentorML (SSE)")
+@app.post("/chat/stream", summary="Stream chat with MentorML (SSE)", dependencies=[Depends(require_auth)])
 async def chat_stream(request: ChatRequest):
     """
     Stream a chat response using Server-Sent Events.
@@ -423,6 +439,26 @@ async def get_diagram(diagram_id: str):
         raise HTTPException(status_code=404, detail=f"Diagram not found: {diagram_id}")
     
     return FileResponse(filepath, media_type="image/png")
+
+
+@app.post("/validate-password", summary="Validate app password")
+async def validate_password(request: ValidatePasswordRequest):
+    """
+    Validate the password for accessing the app.
+    
+    Password is stored in APP_PASSWORD environment variable.
+    Comparison is case-insensitive with all whitespace removed.
+    """
+    app_password = os.getenv("APP_PASSWORD", "").strip().replace(" ", "").lower()
+    user_password = request.password.strip().replace(" ", "").lower()
+    
+    if not app_password:
+        raise HTTPException(
+            status_code=500, 
+            detail="APP_PASSWORD environment variable not configured"
+        )
+    
+    return {"valid": user_password == app_password}
 
 
 @app.get("/", summary="Health check / Frontend")
