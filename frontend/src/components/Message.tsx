@@ -34,17 +34,19 @@ function ThinkingSection({ thinking }: { thinking: string }) {
     <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-amber-800 hover:bg-amber-100 cursor-pointer"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-amber-800 hover:bg-amber-100 cursor-pointer flex-wrap"
       >
-        {isExpanded ? (
-          <ChevronDown className="h-4 w-4" />
-        ) : (
-          <ChevronRight className="h-4 w-4" />
-        )}
-        <Brain className="h-4 w-4" />
-        <span>Teaching Plan</span>
+        <span className="flex items-center gap-2">
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+          <Brain className="h-4 w-4" />
+          <span>Teaching Plan</span>
+        </span>
         {parsed?.topic && (
-          <span className="ml-1 font-normal text-amber-600">— {parsed.topic}</span>
+          <span className="font-normal text-amber-600 basis-full sm:basis-auto sm:ml-1">— {parsed.topic}</span>
         )}
       </button>
       {isExpanded && parsed && (
