@@ -44,7 +44,7 @@ export function ChatInput({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-border bg-white p-4">
+    <form onSubmit={handleSubmit} className="shrink-0 border-t border-border bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="mx-auto flex max-w-3xl items-center gap-2">
         <textarea
           ref={textareaRef}
