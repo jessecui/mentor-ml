@@ -13,7 +13,7 @@ export function AuthModal({ onAuthenticated }: AuthModalProps) {
 
   // Focus the input on mount
   useEffect(() => {
-    const input = document.getElementById("password-input");
+    const input = document.getElementById("creator-question");
     input?.focus();
   }, []);
 
@@ -60,13 +60,14 @@ export function AuthModal({ onAuthenticated }: AuthModalProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <input
-              id="password-input"
+              id="creator-question"
+              name="creator-question"
               type="text"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isLoading}
-              autoComplete="new-password"
-              placeholder="Enter name"
+              autoComplete="one-time-code"
+              placeholder="Enter answer"
               className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50"
             />
           </div>
