@@ -1,4 +1,6 @@
 import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import type { Message as MessageType, Diagram } from "../types";
 import { DiagramCard } from "./DiagramCard";
 import { cn } from "../lib/utils";
@@ -97,6 +99,8 @@ export function Message({ message }: MessageProps) {
           result.push(
             <ReactMarkdown
               key={`text-${i}`}
+              remarkPlugins={[remarkMath]}
+              rehypePlugins={[rehypeKatex]}
               components={{
                 h1: ({ children }) => (
                   <h1 className="mb-4 mt-6 text-2xl font-bold first:mt-0">

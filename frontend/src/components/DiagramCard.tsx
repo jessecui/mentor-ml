@@ -1,5 +1,8 @@
 import type { Diagram } from "../types";
 import { ExternalLink } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 
 interface DiagramCardProps {
   diagram: Diagram;
@@ -21,9 +24,14 @@ export function DiagramCard({ diagram }: DiagramCardProps) {
         />
       </div>
       <figcaption className="border-t border-border bg-muted/30 px-4 py-3">
-        <p className="text-sm text-muted-foreground">
-          {diagram.vision_description || diagram.description}
-        </p>
+        <div className="text-sm text-muted-foreground [&>p]:mb-0">
+          <ReactMarkdown
+            remarkPlugins={[remarkMath]}
+            rehypePlugins={[rehypeKatex]}
+          >
+            {diagram.vision_description || diagram.description}
+          </ReactMarkdown>
+        </div>
         {diagram.post_url && (
           <a
             href={diagram.post_url}

@@ -36,8 +36,8 @@ export function MessageList({ messages, onFillSuggestion }: MessageListProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-3xl">
+    <div className="min-h-0 flex-1 overflow-y-auto [contain:strict]">
+      <div className="mx-auto max-w-3xl pb-12">
         {messages.map((message) => (
           <Message key={message.id} message={message} />
         ))}
