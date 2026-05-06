@@ -44,6 +44,7 @@ RUN mkdir -p model && \
 # Copy application code
 COPY main.py .
 COPY agent/ agent/
+COPY mcp_server/ mcp_server/
 COPY model/*.py model/
 COPY benchmark/ benchmark/
 
