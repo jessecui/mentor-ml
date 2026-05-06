@@ -9,7 +9,7 @@ Provides:
 
 import json
 import os
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -23,78 +23,61 @@ load_dotenv()
 PROJECT_ROOT = Path(__file__).parent
 DIAGRAMS_DIR = PROJECT_ROOT / "benchmark" / "corpus" / "images" / "diagrams"
 
-# Global for Redis context manager cleanup
-_redis_cm = None
+# Globals for context-manager cleanup
 _async_redis_cm = None
+_mcp_exit_stack: AsyncExitStack | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     FastAPI lifespan handler.
-    
-    Loads SigLIP scorer, creates Redis checkpointer, and initializes agent at startup.
-    This ensures the model is loaded once and reused across requests.
+
+    Spawns the diagram MCP server (which owns the SigLIP scorer + embeddings)
+    via a persistent stdio session, loads its tools, creates the async Redis
+    checkpointer, and initializes the agent.
     """
-    global _redis_cm, _async_redis_cm
-    
+    global _async_redis_cm, _mcp_exit_stack
+
     print("🚀 Starting MentorML server...")
-    
-    # Import here to avoid loading heavy ML libraries until needed
-    from model.scorer import SigLIPScorer
+
+    # Import here to avoid loading heavy libraries until needed
     from agent.graph import create_agent
-    from langgraph.checkpoint.redis import RedisSaver
+    from agent.tools import load_persistent_mcp_tools
     from langgraph.checkpoint.redis.aio import AsyncRedisSaver
-    
-    print("📦 Loading SigLIP scorer...")
-    scorer = SigLIPScorer()
-    app.state.scorer = scorer
-    
-    # Setup Redis checkpointer with 1 day TTL
+
+    print("🔌 Spawning diagram MCP server (stdio, persistent session)...")
+    _mcp_exit_stack = AsyncExitStack()
+    tools = await load_persistent_mcp_tools(_mcp_exit_stack)
+    print(f"   ✅ Loaded {len(tools)} tool(s) from MCP server: {[t.name for t in tools]}")
+
+    # Setup async Redis checkpointer with 1 day TTL
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
     print(f"🔗 Connecting to Redis at {redis_url}...")
     ttl_config = {
         "default_ttl": 1440,     # 24 hours in minutes
         "refresh_on_read": True,  # Reset TTL when conversation is accessed
     }
-    
-    # Sync checkpointer for /chat endpoint
-    _redis_cm = RedisSaver.from_conn_string(redis_url, ttl=ttl_config)
-    checkpointer = _redis_cm.__enter__()
-    
-    # Initialize Redis indices (required for first use)
-    print("📝 Setting up Redis checkpoint indices...")
-    checkpointer.setup()
-    
-    app.state.checkpointer = checkpointer
-    
-    # Async checkpointer for /chat/stream endpoint
+
     _async_redis_cm = AsyncRedisSaver.from_conn_string(redis_url, ttl=ttl_config)
     async_checkpointer = await _async_redis_cm.__aenter__()
+    print("📝 Setting up Redis checkpoint indices...")
     await async_checkpointer.asetup()
     app.state.async_checkpointer = async_checkpointer
-    
-    # Check if vision review is enabled (adds ~5-10s latency per diagram)
-    enable_vision = os.getenv("ENABLE_VISION", "true").lower() in ("true", "1", "yes")
-    app.state.enable_vision = enable_vision
-    
-    print("🤖 Creating LangGraph agents...")
-    # Sync agent for /chat
-    agent = create_agent(scorer, checkpointer=checkpointer, enable_vision=enable_vision)
+
+    print("🤖 Creating LangGraph agent...")
+    agent = create_agent(tools, checkpointer=async_checkpointer)
     app.state.agent = agent
-    
-    # Async agent for /chat/stream
-    async_agent = create_agent(scorer, checkpointer=async_checkpointer, enable_vision=enable_vision)
-    app.state.async_agent = async_agent
-    
+    app.state.async_agent = agent
+
     print("✅ MentorML ready!")
     yield
-    
+
     print("👋 Shutting down MentorML server...")
-    if _redis_cm:
-        _redis_cm.__exit__(None, None, None)
     if _async_redis_cm:
         await _async_redis_cm.__aexit__(None, None, None)
+    if _mcp_exit_stack:
+        await _mcp_exit_stack.aclose()
 
 
 
@@ -191,10 +174,10 @@ async def chat(request: ChatRequest):
     from langchain_core.messages import HumanMessage
     
     agent = app.state.agent
-    
+
     try:
-        # Invoke agent with thread_id for conversation state
-        result = agent.invoke(
+        # Invoke agent with thread_id for conversation state.
+        result = await agent.ainvoke(
             {"messages": [HumanMessage(content=request.message)]},
             config={"configurable": {"thread_id": request.thread_id}}
         )

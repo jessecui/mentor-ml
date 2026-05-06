@@ -10,9 +10,10 @@ Maintains conversation state via Redis checkpointing.
 """
 
 import json
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import Annotated, Literal
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.tools import BaseTool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
@@ -20,11 +21,6 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field
-
-from agent.tools import create_retrieval_tool
-
-if TYPE_CHECKING:
-    from model.scorer import SigLIPScorer
 
 
 # --- State Schema ---
@@ -291,33 +287,26 @@ def should_use_tools(state: AgentState) -> Literal["tools", "end"]:
 # --- Graph Construction ---
 
 def create_agent(
-    scorer: "SigLIPScorer", 
+    tools: list[BaseTool],
     checkpointer: BaseCheckpointSaver | None = None,
-    enable_vision: bool = True,
 ):
     """
     Create a Plan-and-Execute LangGraph agent with CoT planning and ReAct execution.
-    
+
     Flow: plan → execute ⇄ tools → end
-    
+
     Args:
-        scorer: Pre-initialized SigLIPScorer instance
+        tools: LangChain tools the agent can call (loaded from the MCP server).
         checkpointer: Optional checkpoint saver for conversation state.
                      If None, uses InMemorySaver (state lost on restart).
-        enable_vision: Whether to enable vision review for retrieved diagrams.
-                      Adds ~5-10s latency but provides contextual descriptions.
-        
+
     Returns:
         Compiled LangGraph agent
     """
     # Use in-memory saver if no checkpointer provided
     if checkpointer is None:
         checkpointer = InMemorySaver()
-    
-    # Create retrieval tool
-    retrieval_tool = create_retrieval_tool(scorer, enable_vision=enable_vision)
-    tools = [retrieval_tool]
-    
+
     # Create tool node
     tool_node = ToolNode(tools)
     

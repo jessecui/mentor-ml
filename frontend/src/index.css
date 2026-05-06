@@ -11,6 +11,12 @@
   --color-foreground: #0f172a;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
 body {
   @apply bg-background text-foreground antialiased;
 }

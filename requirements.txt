@@ -2,7 +2,10 @@ langchain-core
 langchain-google-genai
 langgraph
 langgraph-checkpoint-redis
-fastapi
+mcp
+langchain-mcp-adapters
+langsmith
+fastapi>=0.116
 uvicorn
 python-dotenv
 requests

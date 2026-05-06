@@ -7,6 +7,8 @@ A multimodal AI/ML teaching assistant that retrieves and explains technical diag
 - 🤖 **LangGraph Agent**: Plan-and-Execute architecture with CoT planning and ReAct execution
 - 🖼️ **Multimodal Vision**: Agent sees retrieved diagrams and provides contextual descriptions
 - 🔍 **SigLIP 2 Retrieval**: State-of-the-art bi-encoder (76% top-1 accuracy on ML diagrams)
+- 🔌 **MCP Tool Server**: Diagram retrieval runs as a separate MCP subprocess (stdio); the agent calls it like any LangChain tool
+- 📊 **LangSmith Eval**: Traced retrieval (SigLIP vs CLIP) and end-to-end agent eval against a versioned dataset
 - 💬 **Conversation Memory**: Redis-backed checkpointing with 24h TTL
 - 🎨 **92 Diagrams**: Curated from Jay Alammar's [Illustrated ML](https://jalammar.github.io/) posts
 - ⚡ **SSE Streaming**: Real-time token streaming with thinking/planning visibility
@@ -167,8 +169,26 @@ python benchmark/scripts/scrape_ai_ml_diagrams.py
 # 2. Generate queries (requires GEMINI_API_KEY in .env)
 python benchmark/scripts/generate_queries.py
 
-# 3. Evaluate SigLIP vs CLIP
+# 3. Evaluate SigLIP vs CLIP (offline, self-contained)
 python benchmark/scripts/evaluate.py
+```
+
+### LangSmith Eval
+
+The retrieval benchmark is also runnable via LangSmith for traced runs, a versioned dataset, and a side-by-side comparison UI. End-to-end agent quality (tool-call correctness + LLM-judge on explanation quality) ships as a separate script.
+
+```bash
+# Requires LANGSMITH_API_KEY in .env
+
+# One-time: upload benchmark queries as a LangSmith dataset
+python benchmark/scripts/upload_to_langsmith.py
+
+# Retrieval eval (SigLIP + CLIP as evaluate() targets)
+python benchmark/scripts/langsmith_evaluate_retrieval.py
+
+# Full agent eval (LangGraph end-to-end; ~30 min, ~$1-3 in Gemini calls)
+python benchmark/scripts/langsmith_evaluate_agent.py --limit 5   # smoke test
+python benchmark/scripts/langsmith_evaluate_agent.py             # full run
 ```
 
 ### Diagram Sources
@@ -198,7 +218,10 @@ benchmark/
 └── scripts/
     ├── scrape_ai_ml_diagrams.py
     ├── generate_queries.py
-    └── evaluate.py
+    ├── evaluate.py                  # Offline SigLIP-vs-CLIP baseline
+    ├── upload_to_langsmith.py       # Upload dataset to LangSmith
+    ├── langsmith_evaluate_retrieval.py        # Retrieval eval via LangSmith
+    └── langsmith_evaluate_agent.py  # End-to-end agent eval via LangSmith
 
 model/
 ├── scorer.py                     # SigLIP scorer
@@ -207,7 +230,10 @@ model/
 
 agent/
 ├── graph.py                      # LangGraph agent (Plan-and-Execute)
-└── tools.py                      # Diagram retrieval tool with vision
+└── tools.py                      # MCP client: persistent stdio session, wrapped tools
+
+mcp_server/
+└── diagram_server.py             # MCP server: SigLIP scorer + retrieve_diagram tool
 ```
 
 ## Environment Variables
@@ -221,6 +247,11 @@ GOOGLE_API_KEY=your_gemini_api_key
 # Optional
 REDIS_URL=redis://localhost:6379  # Default
 ENABLE_VISION=true                # Enable vision review (default: true)
+
+# Optional - LangSmith tracing & eval
+LANGSMITH_API_KEY=your_langsmith_key
+LANGSMITH_TRACING=true            # Auto-trace live agent runs
+LANGSMITH_PROJECT=mentorml-prod   # Default project: "default"
 ```
 
 ## Architecture
@@ -228,9 +259,9 @@ ENABLE_VISION=true                # Enable vision review (default: true)
 ```
 User Query → Plan Node (CoT) → Execute Node (ReAct) ⇄ Tools → Response
                                       ↓
-                              retrieve_diagram
-                                      ↓
-                              SigLIP similarity → Vision Review (Gemini 3 Flash)
+                              retrieve_diagram  ←── MCP stdio ──→  diagram_server.py
+                                                                   (SigLIP scorer +
+                                                                    Gemini vision review)
 ```
 
 ### Frontend
